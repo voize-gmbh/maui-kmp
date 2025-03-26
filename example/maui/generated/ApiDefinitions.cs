@@ -145,7 +145,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     ObjCRuntime.NativeHandle Constructor (Voize.SharedTest test);
 
     [Export ("testDefaultTypesString:int:long:float:double:boolean:byte:char:short:")]
-    string TestDefaultTypes(string string, [ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber int, [ObjCRuntime.BindAs (typeof (long))] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (float))] Foundation.NSNumber float, [ObjCRuntime.BindAs (typeof (double))] Foundation.NSNumber double, [ObjCRuntime.BindAs (typeof (bool))] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte))] Foundation.NSNumber byte, [ObjCRuntime.BindAs (typeof (char))] Foundation.NSNumber char, [ObjCRuntime.BindAs (typeof (short))] Foundation.NSNumber short);
+    string TestDefaultTypes(string string, int int, long long, float float, double double, bool boolean, byte byte, char char, short short);
 
     [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:char:short:"), NullAllowed]
     string TestDefaultTypesNullable([NullAllowed] string string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber byte, [ObjCRuntime.BindAs (typeof (char?)), NullAllowed] Foundation.NSNumber char, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber short);
@@ -178,10 +178,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     Voize.SharedFlow TestFlowComplex();
 
     [Export ("testFlowParameterizedArg1:")]
-    Voize.SharedFlow TestFlowParameterized([ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber arg1);
+    Voize.SharedFlow TestFlowParameterized(int arg1);
 
     [Export ("testFlowParameterized2Arg1:arg2:")]
-    Voize.SharedFlow TestFlowParameterized2([ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber arg1, string arg2);
+    Voize.SharedFlow TestFlowParameterized2(int arg1, string arg2);
 
     [Export ("testFlowParameterizedComplexArg1:")]
     Voize.SharedFlow TestFlowParameterizedComplex(Voize.SharedTest arg1);
@@ -190,7 +190,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     Voize.SharedFlow TestFlowParameterizedComplex2(Voize.SharedTest[] arg1, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> arg2);
 
     [Export ("testFlowParameterizedManyArg1:arg2:arg3:arg4:")]
-    Voize.SharedFlow TestFlowParameterizedMany([ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber arg1, string arg2, Foundation.NSString[] arg3, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> arg4);
+    Voize.SharedFlow TestFlowParameterizedMany(int arg1, string arg2, Foundation.NSString[] arg3, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> arg4);
 
     [Export ("testFlowReturnInstant")]
     Voize.SharedFlow TestFlowReturnInstant();
@@ -213,7 +213,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:list:map:long:foo:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor (string name, Voize.SharedTestNested[] list, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> map, [ObjCRuntime.BindAs (typeof (long))] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (byte))] Foundation.NSNumber foo);
+    ObjCRuntime.NativeHandle Constructor (string name, Voize.SharedTestNested[] list, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> map, long long, byte foo);
 
     [Export ("name")]
     string Name { get; }
@@ -224,11 +224,11 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     [Export ("map")]
     Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> Map { get; }
 
-    [Export ("long"), ObjCRuntime.BindAs (typeof (long))]
-    Foundation.NSNumber Long { get; }
+    [Export ("long")]
+    long Long { get; }
 
-    [Export ("foo"), ObjCRuntime.BindAs (typeof (byte))]
-    Foundation.NSNumber Foo { get; }
+    [Export ("foo")]
+    byte Foo { get; }
 
 
   }
@@ -332,10 +332,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedTestSealedTypeOption2 : ObjCRuntime.INativeObject
   {
       [Export ("initWithNumber:nonNested:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor ([ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber number, Voize.SharedNonNested nonNested);
+    ObjCRuntime.NativeHandle Constructor (int number, Voize.SharedNonNested nonNested);
 
-    [Export ("number"), ObjCRuntime.BindAs (typeof (int))]
-    Foundation.NSNumber Number { get; }
+    [Export ("number")]
+    int Number { get; }
 
     [Export ("nonNested")]
     Voize.SharedNonNested NonNested { get; }
@@ -378,10 +378,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedTestSealedTypeWithCustomDiscriminatorOption2 : ObjCRuntime.INativeObject
   {
       [Export ("initWithNumber:nonNested:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor ([ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber number, Voize.SharedNonNested nonNested);
+    ObjCRuntime.NativeHandle Constructor (int number, Voize.SharedNonNested nonNested);
 
-    [Export ("number"), ObjCRuntime.BindAs (typeof (int))]
-    Foundation.NSNumber Number { get; }
+    [Export ("number")]
+    int Number { get; }
 
     [Export ("nonNested")]
     Voize.SharedNonNested NonNested { get; }
@@ -410,13 +410,13 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedTestNested : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:age:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor (string name, [ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber age);
+    ObjCRuntime.NativeHandle Constructor (string name, int age);
 
     [Export ("name")]
     string Name { get; }
 
-    [Export ("age"), ObjCRuntime.BindAs (typeof (int))]
-    Foundation.NSNumber Age { get; }
+    [Export ("age")]
+    int Age { get; }
 
 
   }

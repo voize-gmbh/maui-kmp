@@ -892,7 +892,8 @@ class MauiModuleGenerator(
             }
 
             val typeName =
-                if (wrapped || isBindingParameterOrReturnType) {
+                if (wrapped || (isBindingParameterOrReturnType && type.isMarkedNullable)) {
+                    // use NSNumber for wrapped or nullable primitive types
                     when (type.declaration.qualifiedName?.asString()) {
                         "kotlin.Any" -> KotlinAnyClassName
                         "kotlin.Boolean" -> NSNumberClassName
@@ -1081,7 +1082,8 @@ class MauiModuleGenerator(
                 }
 
             return if (isBindingParameterOrReturnType) {
-                // if this is a binding parameter or return type, we need to add bindAs and the nullable attribute
+                // if this is a binding parameter or return type and is foundation wrapper type,
+                // we need to add bindAs and the nullable attribute
                 // and unset the nullable property of the type name itself
                 when (typeName) {
                     is CSharp.ClassName -> {
