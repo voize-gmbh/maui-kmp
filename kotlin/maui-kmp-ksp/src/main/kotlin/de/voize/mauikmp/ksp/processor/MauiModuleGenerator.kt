@@ -892,7 +892,7 @@ class MauiModuleGenerator(
             }
 
             val typeName =
-                if (wrapped) {
+                if (wrapped || isBindingParameterOrReturnType) {
                     when (type.declaration.qualifiedName?.asString()) {
                         "kotlin.Any" -> KotlinAnyClassName
                         "kotlin.Boolean" -> NSNumberClassName
@@ -904,7 +904,7 @@ class MauiModuleGenerator(
                         "kotlin.Long" -> NSNumberClassName
                         "kotlin.Number" -> NSNumberClassName
                         "kotlin.Short" -> NSNumberClassName
-                        "kotlin.String" -> NSStringClassName
+                        "kotlin.String" -> if (wrapped) NSStringClassName else StringTypeName // don't use NSString for binding parameters
                         "kotlin.Unit" -> KotlinUnitClassName
                         "kotlin.time.Duration" -> NSNumberClassName // value class
                         else -> null
@@ -919,7 +919,7 @@ class MauiModuleGenerator(
                         "kotlin.Char" -> CharTypeName
                         "kotlin.Double" -> DoubleTypeName
                         "kotlin.Float" -> FloatTypeName
-                        "kotlin.Int" -> if (isBindingParameterOrReturnType) NSNumberClassName else IntTypeName
+                        "kotlin.Int" -> IntTypeName
                         "kotlin.Long" -> LongTypeName
                         "kotlin.Number" -> NSNumberClassName
                         "kotlin.Short" -> ShortTypeName

@@ -145,10 +145,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     ObjCRuntime.NativeHandle Constructor (Voize.SharedTest test);
 
     [Export ("testDefaultTypesString:int:long:float:double:boolean:byte:char:short:")]
-    string TestDefaultTypes(string string, [ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber int, long long, float float, double double, bool boolean, byte byte, char char, short short);
+    string TestDefaultTypes(string string, [ObjCRuntime.BindAs (typeof (int))] Foundation.NSNumber int, [ObjCRuntime.BindAs (typeof (long))] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (float))] Foundation.NSNumber float, [ObjCRuntime.BindAs (typeof (double))] Foundation.NSNumber double, [ObjCRuntime.BindAs (typeof (bool))] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte))] Foundation.NSNumber byte, [ObjCRuntime.BindAs (typeof (char))] Foundation.NSNumber char, [ObjCRuntime.BindAs (typeof (short))] Foundation.NSNumber short);
 
     [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:char:short:"), NullAllowed]
-    string TestDefaultTypesNullable([NullAllowed] string string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber int, [NullAllowed] long long, [NullAllowed] float float, [NullAllowed] double double, [NullAllowed] bool boolean, [NullAllowed] byte byte, [NullAllowed] char char, [NullAllowed] short short);
+    string TestDefaultTypesNullable([NullAllowed] string string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber byte, [ObjCRuntime.BindAs (typeof (char?)), NullAllowed] Foundation.NSNumber char, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber short);
 
     [Export ("testListAndMapList:map:nestedList:nestedMap:complexList:complexMap:")]
     Foundation.NSNumber[] TestListAndMap(Foundation.NSString[] list, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, Foundation.NSString[][] nestedList, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, Voize.SharedTest[] complexList, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap);
@@ -202,7 +202,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     Voize.SharedTestSealedTypeOption1 TestSealedSubtype(Voize.SharedTestSealedTypeOption1 test);
 
     [Export ("testSealedCustomDiscriminatorTest:")]
-    void TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test);
+    Voize.SharedKotlinUnit TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test);
 
     [Export ("testMapWithEnumKeyMap:")]
     Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> TestMapWithEnumKey(Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> map);
@@ -213,7 +213,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:list:map:long:foo:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor (string name, Voize.SharedTestNested[] list, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> map, long long, byte foo);
+    ObjCRuntime.NativeHandle Constructor (string name, Voize.SharedTestNested[] list, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> map, [ObjCRuntime.BindAs (typeof (long))] Foundation.NSNumber long, [ObjCRuntime.BindAs (typeof (byte))] Foundation.NSNumber foo);
 
     [Export ("name")]
     string Name { get; }
@@ -224,11 +224,11 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     [Export ("map")]
     Foundation.NSDictionary<Foundation.NSString, Voize.SharedTestNested> Map { get; }
 
-    [Export ("long")]
-    long Long { get; }
+    [Export ("long"), ObjCRuntime.BindAs (typeof (long))]
+    Foundation.NSNumber Long { get; }
 
-    [Export ("foo")]
-    byte Foo { get; }
+    [Export ("foo"), ObjCRuntime.BindAs (typeof (byte))]
+    Foundation.NSNumber Foo { get; }
 
 
   }
