@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix void return type is not used for bindings
+
 ## v0.1.1
 
 - Fix NSNumber types should use BindAs bindings

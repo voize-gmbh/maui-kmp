@@ -905,7 +905,7 @@ class MauiModuleGenerator(
                         "kotlin.Number" -> NSNumberClassName
                         "kotlin.Short" -> NSNumberClassName
                         "kotlin.String" -> if (wrapped) NSStringClassName else StringTypeName // don't use NSString for binding parameters
-                        "kotlin.Unit" -> KotlinUnitClassName
+                        "kotlin.Unit" -> if (wrapped) KotlinUnitClassName else VoidTypeName // don't use KotlinUnit for binding parameters
                         "kotlin.time.Duration" -> NSNumberClassName // value class
                         else -> null
                     }?.copy(
