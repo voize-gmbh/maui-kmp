@@ -202,7 +202,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     Voize.SharedTestSealedTypeOption1 TestSealedSubtype(Voize.SharedTestSealedTypeOption1 test);
 
     [Export ("testSealedCustomDiscriminatorTest:")]
-    Voize.SharedKotlinUnit TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test);
+    void TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test);
 
     [Export ("testMapWithEnumKeyMap:")]
     Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> TestMapWithEnumKey(Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> map);
