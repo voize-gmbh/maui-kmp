@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.1
 
 - Fix NSNumber types should use BindAs bindings
 
