@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.3
 
 - Remove non nullable primitives conversion to and from NSNumber in bindings
 
