@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.2
 
 - Fix void return type is not used for bindings
 
