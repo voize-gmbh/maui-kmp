@@ -93,12 +93,25 @@ class E2ETest() {
 
     @MauiBinding
     fun testKotlinDateTime(
+        duration: Duration,
+        durationOrNull: Duration?,
         instant: Instant,
         localDateTime: LocalDateTime,
         test: DateTimeTest,
         instantOrNull: Instant?
     ): Duration {
         return 5.seconds
+    }
+
+     @MauiBinding
+    fun testKotlinDateTimeList(
+        duration: List<Duration>,
+        instant: List<Instant>,
+        localDateTime: List<LocalDateTime>,
+        test: List<DateTimeTest>,
+        instantOrNull: List<Instant?>
+    ): List<Duration> {
+        return listOf(5.seconds)
     }
 
     @MauiBinding

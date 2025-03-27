@@ -926,7 +926,7 @@ class MauiModuleGenerator(
                         "kotlin.Short" -> ShortTypeName
                         "kotlin.String" -> StringTypeName
                         "kotlin.Unit" -> VoidTypeName
-                        "kotlin.time.Duration" -> NSNumberClassName // value class
+                        "kotlin.time.Duration" -> LongTypeName // value class
                         else -> null
                     }?.copy(
                         isNullable = type.isMarkedNullable,
