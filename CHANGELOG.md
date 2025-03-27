@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.4
 
 - Fix kotlin Duration is converted to NSNumber instead of long in bindings
 
