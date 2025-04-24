@@ -48,10 +48,10 @@ subprojects {
     apply(plugin = "signing")
 
     tasks {
-        val dokkaOutputDir = "$buildDir/dokka"
+        val dokkaOutputDir = layout.buildDirectory.dir("dokka")
 
         dokkaHtml {
-            outputDirectory.set(file(dokkaOutputDir))
+            outputDirectory.set(dokkaOutputDir)
         }
     }
 

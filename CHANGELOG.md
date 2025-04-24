@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Add gradle plugin to generate android fat aar and csproj
+
 ## v0.1.4
 
 - Fix kotlin Duration is converted to NSNumber instead of long in bindings
