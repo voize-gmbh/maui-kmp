@@ -37,3 +37,12 @@ repositories {
         }
     }
 }
+
+publishing {
+    publications.withType<MavenPublication> {
+        pom {
+            name.set("maui-kmp-gradle-plugin")
+            description.set("Gradle plugin for MAUI KMP")
+        }
+    }
+}

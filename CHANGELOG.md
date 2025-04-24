@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix release pipeline
+
 ## v0.1.5
 
 - Add gradle plugin to generate android fat aar and csproj
