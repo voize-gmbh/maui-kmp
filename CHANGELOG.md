@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Add source jar to published gradle plugin artifacts
+
 ## v0.1.6
 
 - Fix release pipeline
