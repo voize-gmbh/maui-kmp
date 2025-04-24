@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.7
 
 - Add source jar to published gradle plugin artifacts
 
