@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.6
 
 - Fix release pipeline
 
