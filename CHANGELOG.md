@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.8
 
 - Fix gradle task already exists bug
 
