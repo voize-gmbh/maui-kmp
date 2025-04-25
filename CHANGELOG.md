@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix gradle task already exists bug
+
 ## v0.1.7
 
 - Add source jar to published gradle plugin artifacts

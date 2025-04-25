@@ -66,9 +66,9 @@ class MauiKmp : Plugin<Project> {
             }
 
             val excludeFile = fatArrExcludesFile.get().asFile
-            if (excludeFile.exists()) {
-                val excludes = JsonSlurper().parse(excludeFile) as List<Map<String, String>>
-                project.configurations.named(embedConfigurationName).configure {
+            project.configurations.named(embedConfigurationName).configure {
+                if (excludeFile.exists()) {
+                    val excludes = JsonSlurper().parse(excludeFile) as List<Map<String, String>>
                     resolutionStrategy {
                         excludes.forEach { exclude ->
                             exclude(
@@ -76,6 +76,11 @@ class MauiKmp : Plugin<Project> {
                                 module = exclude.getValue("name"),
                             )
                         }
+                    }
+                } else {
+                    // if the file does not exist, we remove all dependencies, because we don't know what to exclude
+                    withDependencies {
+                        clear()
                     }
                 }
             }
