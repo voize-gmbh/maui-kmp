@@ -87,11 +87,11 @@ fun Project.getNuGetPackageForMavenDependency(
         throw IllegalStateException("No matching NuGet package found for group: $group:$name:$version")
     } else {
         val packageInfo = packages.first()
-        val id = packageInfo.getValue("id")
-        val version = packageInfo.getValue("latestVersion")
+        val nuGetPackageId = packageInfo.getValue("id")
+        val nuGetPackageVersion = packageInfo.getValue("latestVersion")
         return NuGetPackageReference(
-            id = id,
-            version = version,
+            id = nuGetPackageId,
+            version = nuGetPackageVersion,
             mavenCoordinates = "$group:$name:$version",
         )
     }

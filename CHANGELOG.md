@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix maven artifact version in comment was nuget version
+
 ## v0.1.8
 
 - Fix gradle task already exists bug
