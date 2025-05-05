@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.9
 
 - Fix maven artifact version in comment was nuget version
 
