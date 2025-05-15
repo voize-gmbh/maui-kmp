@@ -118,7 +118,7 @@ class MauiModuleGenerator(
                 when (annotatedNode) {
                     is KSFunctionDeclaration -> {
                         if (annotatedNode.typeParameters.isNotEmpty()) {
-                            error("Type parameters are not supported for MAUI functions")
+                            error("Type parameters are not supported for MAUI functions $annotatedNode at ${annotatedNode.location}")
                         }
                         functionSymbols.add(annotatedNode)
                     }
@@ -129,7 +129,7 @@ class MauiModuleGenerator(
 
                     is KSPropertyDeclaration -> {
                         if (annotatedNode.typeParameters.isNotEmpty()) {
-                            error("Type parameters are not supported for MAUI properties")
+                            error("Type parameters are not supported for MAUI properties $annotatedNode at ${annotatedNode.location}")
                         }
                         propertySymbols.add(annotatedNode)
                     }

@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Enhance error messages for unsupported type parameters in MAUI functions and properties
+
 ## v0.1.9
 
 - Fix maven artifact version in comment was nuget version
