@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.google.devtools.ksp.gradle.KspAATask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -85,7 +86,7 @@ dependencies {
     add("kspIosSimulatorArm64", libs.maui.kmp.ksp)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.dsl.KotlinCompile<*>>().configureEach {
+tasks.withType<KspAATask>().configureEach {
     if(name != "kspCommonMainKotlinMetadata") {
         dependsOn("kspCommonMainKotlinMetadata")
     } else {

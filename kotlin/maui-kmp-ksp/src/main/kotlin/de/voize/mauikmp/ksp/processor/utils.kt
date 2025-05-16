@@ -13,6 +13,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeAlias
 import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.Origin
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonClassDiscriminator
 
@@ -78,7 +79,7 @@ internal fun KSClassDeclaration.getMauiFunctionsAndConstructors(
         Modifier.INTERNAL !in it.modifiers &&
             Modifier.PRIVATE !in it.modifiers &&
             (
-                isDataClass || it.isAnnotatedWithMauiBinding(wellKnownTypes)
+                (isDataClass && it.origin != Origin.SYNTHETIC) || it.isAnnotatedWithMauiBinding(wellKnownTypes)
             ) &&
             !it.isAnnotatedWithMauiBindingIgnore(wellKnownTypes)
     }

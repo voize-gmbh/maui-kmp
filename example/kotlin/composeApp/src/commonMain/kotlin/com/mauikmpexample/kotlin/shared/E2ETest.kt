@@ -293,3 +293,21 @@ data class DateTimeTest(
     val map: Map<String, Instant>,
     val instantOrNull: Instant?,
 )
+
+@MauiBinding
+class ClassWithConstructor @MauiBinding constructor(
+    val string: String,
+    val int: Int,
+    val long: Long,
+    val float: Float,
+    val double: Double,
+    val boolean: Boolean,
+    val byte: Byte,
+    val char: Char,
+    val short: Short,
+) {
+    @MauiBinding
+    fun testDefaultTypes(): String {
+        return "Hello World"
+    }
+}

@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Support KSP2
+
 ## v0.1.10
 
 - Enhance error messages for unsupported type parameters in MAUI functions and properties

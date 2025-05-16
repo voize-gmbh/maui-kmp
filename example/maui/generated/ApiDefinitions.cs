@@ -213,6 +213,17 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
   }
   [BaseType (typeof(Voize.SharedBase))]
+  interface SharedClassWithConstructor : ObjCRuntime.INativeObject
+  {
+      [Export ("initWithString:int:long:float:double:boolean:byte:char:short:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (string string, int int, long long, float float, double double, bool boolean, byte byte, char char, short short);
+
+    [Export ("testDefaultTypes")]
+    string TestDefaultTypes();
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
   interface SharedTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:list:map:long:foo:"), DesignatedInitializer]
