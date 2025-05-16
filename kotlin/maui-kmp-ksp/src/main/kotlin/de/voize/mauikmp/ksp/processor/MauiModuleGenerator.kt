@@ -117,7 +117,7 @@ class MauiModuleGenerator(
             .forEach { annotatedNode ->
                 when (annotatedNode) {
                     is KSFunctionDeclaration -> {
-                        if (annotatedNode.typeParameters.isNotEmpty()) {
+                        if (!annotatedNode.isConstructor() && annotatedNode.typeParameters.isNotEmpty()) {
                             error("Type parameters are not supported for MAUI functions $annotatedNode at ${annotatedNode.location}")
                         }
                         functionSymbols.add(annotatedNode)
