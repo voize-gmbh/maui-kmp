@@ -311,3 +311,14 @@ class ClassWithConstructor @MauiBinding constructor(
         return "Hello World"
     }
 }
+
+@MauiBinding
+open class GenericClass<T: String?>(val value: T) {
+    @MauiBinding
+    fun process(other: T): T {
+        return other
+    }
+}
+
+@MauiBinding
+class GenericSubclass<T :String>(value: T) : GenericClass<T>(value)

@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Add workaround for ksp k2 bug
+
 ## v0.1.11
 
 - Support KSP2

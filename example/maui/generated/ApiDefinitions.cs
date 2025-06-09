@@ -224,6 +224,19 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
   }
   [BaseType (typeof(Voize.SharedBase))]
+  interface SharedGenericClass : ObjCRuntime.INativeObject
+  {
+      [Export ("processOther:"), NullAllowed]
+    string Process([NullAllowed] string other);
+
+
+  }
+  [BaseType (typeof(Voize.SharedGenericClass))]
+  interface SharedGenericSubclass : ObjCRuntime.INativeObject
+  {
+  
+  }
+  [BaseType (typeof(Voize.SharedBase))]
   interface SharedTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:list:map:long:foo:"), DesignatedInitializer]

@@ -863,13 +863,15 @@ class MauiModuleGenerator(
         depth: Int = 0,
     ): CSharp.TypeName {
         val type = this.type
-        if (type != null) {
-            return type.resolve().getCSharpObjectCTypeName(
+        return if (type != null) {
+            type.resolve().getCSharpObjectCTypeName(
                 wrapped = wrapped,
                 depth = depth,
             )
         } else {
-            error("Could not resolve type argument: $this at ${this.location}")
+            // Since K2 KSP returns type null from [KSClassDeclaration.asStarProjectedType] for type arguments, workaround for https://github.com/google/ksp/issues/2464
+            logger.warn("Could not resolve type argument, falling back to Any: $this at ${this.location}")
+            KotlinAnyClassName
         }
     }
 
@@ -886,9 +888,12 @@ class MauiModuleGenerator(
             }
             TypeSpec.classBuilder("").superinterfaces
 
+            fun KSTypeArgument.resolveTypeArgument(): CSharp.TypeName =
+                getCSharpObjectCTypeName(wrapped = true, depth = depth + 1)
+
             fun resolveTypeArgument(index: Int): CSharp.TypeName {
                 val argument = type.arguments[index]
-                return argument.getCSharpObjectCTypeName(wrapped = true, depth = depth + 1)
+                return argument.resolveTypeArgument()
             }
 
             val typeName =
@@ -989,10 +994,7 @@ class MauiModuleGenerator(
                 } ?: run {
                     val typeArguments =
                         type.arguments.map {
-                            it.getCSharpObjectCTypeName(
-                                wrapped = true,
-                                depth = depth + 1,
-                            )
+                            it.resolveTypeArgument()
                         }
                     when (val declaration = type.declaration) {
                         is KSTypeAlias -> {
@@ -1468,12 +1470,12 @@ class MauiModuleGenerator(
         fun resolveTypeArgument(index: Int): TypeName {
             val argument = type.arguments[index]
             val type = argument.type
-            if (type != null) {
-                return getKotlinMauiAndroidTypeName(
+            return if (type != null) {
+                getKotlinMauiAndroidTypeName(
                     type.resolve(),
                 )
             } else {
-                error("Could not resolve type argument")
+                error("Could not resolve type argument: $argument at ${argument.location}")
             }
         }
 

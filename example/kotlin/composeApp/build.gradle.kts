@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.google.devtools.ksp.gradle.KspAATask
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -93,6 +94,16 @@ tasks.withType<KspAATask>().configureEach {
         finalizedBy("copyGeneratedMauiIosFiles")
     }
 }
+
+// this is needed if K2 is disabled
+tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    if(name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
+    } else {
+        finalizedBy("copyGeneratedMauiIosFiles")
+    }
+}
+
 
 tasks.register<Copy>("copyGeneratedMauiIosFiles") {
     dependsOn("kspKotlinIosArm64")
