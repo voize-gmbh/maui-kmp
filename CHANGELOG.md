@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.12
 
 - Add workaround for ksp k2 bug
 
