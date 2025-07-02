@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix ios type generation for nested collections
+
 ## v0.1.12
 
 - Add workaround for ksp k2 bug

@@ -56,6 +56,8 @@ class E2ETest() {
         map: Map<String, String>,
         nestedList: List<List<String>>,
         nestedMap: Map<String, Map<String, String>>,
+        nestedListInMap: Map<String, List<String>>,
+        nestedMapInList: List<Map<String, String>>,
         complexList: List<Test>,
         complexMap: Map<String, Test>,
     ): List<Int> {

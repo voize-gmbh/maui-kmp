@@ -888,8 +888,7 @@ class MauiModuleGenerator(
             }
             TypeSpec.classBuilder("").superinterfaces
 
-            fun KSTypeArgument.resolveTypeArgument(): CSharp.TypeName =
-                getCSharpObjectCTypeName(wrapped = true, depth = depth + 1)
+            fun KSTypeArgument.resolveTypeArgument(): CSharp.TypeName = getCSharpObjectCTypeName(wrapped = true, depth = depth + 1)
 
             fun resolveTypeArgument(index: Int): CSharp.TypeName {
                 val argument = type.arguments[index]
@@ -969,7 +968,11 @@ class MauiModuleGenerator(
                     "kotlin.collections.List", "kotlin.collections.Set" ->
                         CSharp.ParameterizedTypeName(
                             rawType =
-                                NSArrayClassName.copy(
+                                if (wrapped) {
+                                    NSArrayClassName
+                                } else {
+                                    ArrayClassName
+                                }.copy(
                                     isNullable = type.isMarkedNullable,
                                 ),
                             typeArguments = listOf(resolveTypeArgument(0)),
@@ -1641,6 +1644,15 @@ internal val NSArrayClassName =
     CSharp.ClassName(
         simpleName = "NSArray",
         namespace = csharpFoundationNamespace,
+        isNullable = false,
+        attributes = emptyList(),
+    )
+
+// this is a special placeholder class for array types in C# which written []
+internal val ArrayClassName =
+    CSharp.ClassName(
+        simpleName = "Array",
+        namespace = csharpSystemNamespace,
         isNullable = false,
         attributes = emptyList(),
     )
