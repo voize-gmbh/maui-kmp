@@ -7,8 +7,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonClassDiscriminator
 
@@ -19,6 +17,12 @@ class E2ETest() {
     constructor(test: Test) : this() {
         println(test)
     }
+
+    @MauiBinding
+    val string: String = "Hello World"
+
+    @MauiBinding
+    val nullableString: String? = null
 
     @MauiBinding
     fun testDefaultTypes(
@@ -119,56 +123,6 @@ class E2ETest() {
     @MauiBinding
     fun getDateTimeTest(): DateTimeTest {
         error("Not implemented")
-    }
-
-    @MauiBinding
-    fun testFlow(): Flow<Int> {
-        return flowOf(1, 2, 3)
-    }
-
-    @MauiBinding
-    fun testFlowNullable(): Flow<Int?> {
-        return flowOf(1, 2, null)
-    }
-
-    @MauiBinding
-    fun testFlowComplex(): Flow<Test> {
-        return flowOf(Test("Erik", listOf(), mapOf(), 30))
-    }
-
-    @MauiBinding
-    fun testFlowParameterized(arg1: Int): Flow<FlowTest> {
-        return flowOf()
-    }
-
-    @MauiBinding
-    fun testFlowParameterized2(arg1: Int, arg2: String): Flow<FlowTest> {
-        return flowOf()
-    }
-
-    @MauiBinding
-    fun testFlowParameterizedComplex(arg1: Test): Flow<FlowTest> {
-        return flowOf()
-    }
-
-    @MauiBinding
-    fun testFlowParameterizedComplex2(arg1: List<Test>, arg2: Map<String, Test>): Flow<FlowTest> {
-        return flowOf()
-    }
-
-    @MauiBinding
-    fun testFlowParameterizedMany(
-        arg1: Int,
-        arg2: String,
-        arg3: List<String>,
-        arg4: Map<String, Test>
-    ): Flow<FlowTest> {
-        return flowOf()
-    }
-
-    @MauiBinding
-    fun testFlowReturnInstant(): Flow<Instant> {
-        return flowOf()
     }
 
     @MauiBinding
@@ -281,9 +235,6 @@ enum class Enum {
     OPTION2,
     OPTION_3,
 }
-
-@Serializable
-object FlowTest
 
 typealias TestTypeAlias = Test
 

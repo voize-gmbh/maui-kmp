@@ -56,6 +56,7 @@ import de.voize.mauikmp.ksp.processor.csharp.AliasUsingDirectiveSpec
 import de.voize.mauikmp.ksp.processor.csharp.CSharp
 import de.voize.mauikmp.ksp.processor.csharp.InterfaceDeclarationSpec
 import de.voize.mauikmp.ksp.processor.csharp.NamespaceSpec
+import de.voize.mauikmp.ksp.processor.csharp.toCSharpMemberName
 
 class MauiModuleGenerator(
     private val codeGenerator: CodeGenerator,
@@ -241,7 +242,7 @@ class MauiModuleGenerator(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType(typeof($kotlinBaseClassName))"),
                 identifier = "${csharpIOSBindingPrefix}KotlinThrowable",
-                interfaceTypeList = emptyList(),
+                interfaceTypeList = listOf(KotlinAnyClassName),
                 rawBody =
                     """
                     [Export ("initWithMessage:")]
@@ -262,7 +263,7 @@ class MauiModuleGenerator(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
                 identifier = kotlinLocalDateClassName,
-                interfaceTypeList = emptyList(),
+                interfaceTypeList = listOf(KotlinAnyClassName),
                 rawBody =
                     """
                     [Export ("initWithYear:monthNumber:dayOfMonth:")]
@@ -303,7 +304,7 @@ class MauiModuleGenerator(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
                 identifier = kotlinInstantClassName,
-                interfaceTypeList = emptyList(),
+                interfaceTypeList = listOf(KotlinAnyClassName),
                 rawBody =
                     """
                     [Export ("toEpochMilliseconds")]
@@ -345,7 +346,7 @@ class MauiModuleGenerator(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
                 identifier = kotlinLocalTimeClassName,
-                interfaceTypeList = emptyList(),
+                interfaceTypeList = listOf(KotlinAnyClassName),
                 rawBody =
                     """
                     [Export ("initWithHour:minute:second:nanosecond:")]
@@ -393,7 +394,7 @@ class MauiModuleGenerator(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
                 identifier = kotlinLocalDateTime,
-                interfaceTypeList = emptyList(),
+                interfaceTypeList = listOf(KotlinAnyClassName),
                 rawBody =
                     """
                     [Export ("initWithYear:monthNumber:dayOfMonth:hour:minute:second:nanosecond:")]
@@ -469,7 +470,7 @@ class MauiModuleGenerator(
                                                     superClass
                                                         .asStarProjectedType()
                                                         .getCSharpObjectCTypeName()
-                                                        .writeTo(this, withAttributes = false)
+                                                        .writeTo(this)
                                                 }
                                             }))",
                                         ),
@@ -514,7 +515,7 @@ class MauiModuleGenerator(
                                                                 }
                                                         append("    ${attributes.cSharpAttributesToString()}\n")
                                                         append("    ")
-                                                        NativeHandleClassName.writeTo(this, withAttributes = false)
+                                                        NativeHandleClassName.writeTo(this)
                                                         append(" Constructor (")
                                                         constructor.parameters.joinTo(
                                                             this,
@@ -522,12 +523,15 @@ class MauiModuleGenerator(
                                                         ) {
                                                             buildString {
                                                                 val type = it.type.resolve()
-                                                                type
-                                                                    .getCSharpObjectCTypeName(
+                                                                val typeName =
+                                                                    type.getCSharpObjectCTypeName(
                                                                         isBindingParameterOrReturnType = true,
-                                                                    ).writeTo(this, withAttributes = true)
+                                                                    )
+                                                                typeName.writeAttributesTo(this)
+                                                                typeName.writeTo(this)
+
                                                                 append(" ")
-                                                                append(it.name!!.asString())
+                                                                append(it.name!!.toCSharpMemberName())
                                                             }
                                                         }
                                                         append(");\n")
@@ -545,7 +549,7 @@ class MauiModuleGenerator(
                                                         returnTypeName.attributes
                                                 append("    ${attributes.cSharpAttributesToString()}\n")
                                                 append("    ")
-                                                returnTypeName.writeTo(this, withAttributes = false)
+                                                returnTypeName.writeTo(this)
                                                 append(" ")
                                                 append(function.getCSharpObjectCName())
                                                 append("(")
@@ -555,11 +559,13 @@ class MauiModuleGenerator(
                                                 ) {
                                                     buildString {
                                                         val type = it.type.resolve()
-                                                        type
-                                                            .getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
-                                                            .writeTo(this, withAttributes = true)
+                                                        val typeName =
+                                                            type.getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
+                                                        typeName.writeAttributesTo(this)
+                                                        typeName.writeTo(this)
+
                                                         append(" ")
-                                                        append(it.name!!.asString())
+                                                        append(it.name!!.toCSharpMemberName())
                                                     }
                                                 }
                                                 append(");\n")
@@ -575,7 +581,7 @@ class MauiModuleGenerator(
                                                         typeName.attributes
                                                 append("    ${attributes.cSharpAttributesToString()}\n")
                                                 append("    ")
-                                                typeName.writeTo(this, withAttributes = false)
+                                                typeName.writeTo(this)
                                                 append(" ")
                                                 append(property.getCSharpObjectCName())
                                                 append(" { ")
@@ -696,7 +702,7 @@ class MauiModuleGenerator(
                                             returnTypeName.attributes
                                     append("    ${attributes.cSharpAttributesToString()}\n")
                                     append("    ")
-                                    returnTypeName.writeTo(this, withAttributes = false)
+                                    returnTypeName.writeTo(this)
                                     append(" ")
                                     append(declaration.getCSharpObjectCName())
                                     append("(")
@@ -706,11 +712,14 @@ class MauiModuleGenerator(
                                     ) {
                                         buildString {
                                             val type = it.type.resolve()
-                                            type
-                                                .getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
-                                                .writeTo(this, withAttributes = true)
+                                            val typeName =
+                                                type
+                                                    .getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
+                                            typeName.writeAttributesTo(this)
+                                            typeName.writeTo(this)
+
                                             append(" ")
-                                            append(it.name!!.asString())
+                                            append(it.name!!.toCSharpMemberName())
                                         }
                                     }
                                     append(");\n")
@@ -728,7 +737,7 @@ class MauiModuleGenerator(
                                         ) + typeName.attributes
                                     append("    ${attributes.cSharpAttributesToString()}\n")
                                     append("    ")
-                                    typeName.writeTo(this, withAttributes = false)
+                                    typeName.writeTo(this)
                                     append(" ")
                                     append(declaration.getCSharpObjectCName())
                                     append(" { ")
@@ -798,7 +807,8 @@ class MauiModuleGenerator(
         return if (className != null) {
             val csharpTypeName =
                 buildString {
-                    className.writeTo(this, withAttributes = false)
+                    className.writeTo(this)
+                    className.writeNullableTo(this)
                 }
             listOf("$csharpObjCRuntimeNamespace.BindAs (typeof ($csharpTypeName))")
         } else {
@@ -824,9 +834,9 @@ class MauiModuleGenerator(
         val name = simpleName.asString()
         val lowercaseName = name.lowercase()
         return when {
-            lowercaseName == "default" && this !is KSFunctionDeclaration && this !is KSPropertyDeclaration -> name + "_" // reserved keyword only if not a function
-            lowercaseName == "description" -> name + "_" // reserved keyword
-            lowercaseName.startsWith("init") -> "do" + name.replaceFirstChar { it.uppercaseChar() } // init is reserved for constructors
+            lowercaseName == "default" && this !is KSFunctionDeclaration && this !is KSPropertyDeclaration -> name + "_" // reserved keyword in objc only if not a function
+            lowercaseName == "description" -> name + "_" // reserved keyword in objc
+            lowercaseName.startsWith("init") -> "do" + name.replaceFirstChar { it.uppercaseChar() } // init is reserved in objc for constructors
             else -> name
         }
     }
@@ -875,6 +885,10 @@ class MauiModuleGenerator(
         }
     }
 
+    /**
+     * @param isBindingParameterOrReturnType this parameter is used to determine if the type is a binding parameter or return type.
+     *          this is important because binding parameters and return types must use wrapped types if nullable
+     */
     private fun KSType.getCSharpObjectCTypeName(
         wrapped: Boolean = false,
         isBindingParameterOrReturnType: Boolean = false,
@@ -972,10 +986,9 @@ class MauiModuleGenerator(
                                     NSArrayClassName
                                 } else {
                                     ArrayClassName
-                                }.copy(
-                                    isNullable = type.isMarkedNullable,
-                                ),
+                                },
                             typeArguments = listOf(resolveTypeArgument(0)),
+                            isNullable = type.isMarkedNullable,
                         )
 
                     "kotlin.collections.Map" ->
@@ -984,13 +997,14 @@ class MauiModuleGenerator(
                                 CSharp.ClassName(
                                     simpleName = "NSDictionary",
                                     namespace = csharpFoundationNamespace,
-                                    isNullable = type.isMarkedNullable,
+                                    isNullable = false,
                                 ),
                             typeArguments =
                                 listOf(
                                     resolveTypeArgument(0),
                                     resolveTypeArgument(1),
                                 ),
+                            isNullable = type.isMarkedNullable,
                         )
 
                     else -> null
@@ -1006,9 +1020,10 @@ class MauiModuleGenerator(
                                     CSharp.ClassName(
                                         simpleName = declaration.getCSharpObjectCName(),
                                         namespace = "", // local reference (only type alias in the current source are supported)
-                                        isNullable = type.isMarkedNullable,
+                                        isNullable = false,
                                     ),
                                 typeArguments = typeArguments,
+                                isNullable = type.isMarkedNullable,
                             )
                         }
 
@@ -1023,19 +1038,15 @@ class MauiModuleGenerator(
                                         )
                                     ) {
                                         CSharp.ParameterizedTypeName(
-                                            rawType =
-                                                ActionClassName.copy(
-                                                    isNullable = type.isMarkedNullable,
-                                                ),
+                                            rawType = ActionClassName,
                                             typeArguments = typeArguments.dropLast(1),
+                                            isNullable = type.isMarkedNullable,
                                         )
                                     } else {
                                         CSharp.ParameterizedTypeName(
-                                            rawType =
-                                                FuncClassName.copy(
-                                                    isNullable = type.isMarkedNullable,
-                                                ),
+                                            rawType = FuncClassName,
                                             typeArguments = typeArguments,
+                                            isNullable = type.isMarkedNullable,
                                         )
                                     }
                                 }

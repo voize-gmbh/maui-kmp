@@ -6,7 +6,8 @@ data class AliasUsingDirectiveSpec(
 ) {
     fun writeTo(out: Appendable) {
         out.append("  using $identifier = ")
-        namespaceOrTypeName.writeTo(out, withAttributes = false)
+        namespaceOrTypeName.writeTo(out)
+        namespaceOrTypeName.writeNullableTo(out)
         out.append(";\n")
     }
 }

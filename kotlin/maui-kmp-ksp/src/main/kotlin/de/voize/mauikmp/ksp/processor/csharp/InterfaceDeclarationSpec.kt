@@ -16,7 +16,7 @@ data class InterfaceDeclarationSpec(
             out.append(
                 interfaceTypeList.joinToString(", ") {
                     buildString {
-                        it.writeTo(this, withAttributes = false)
+                        it.writeTo(this)
                     }
                 },
             )

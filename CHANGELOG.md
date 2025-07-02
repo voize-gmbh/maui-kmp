@@ -3,6 +3,9 @@
 ## unreleased
 
 - Fix ios type generation for nested collections
+- Escape csharp identifier if it is a reserved keyword
+- Correctly handle nullable parameterized types
+- Cleanup maui ios example project
 
 ## v0.1.12
 
