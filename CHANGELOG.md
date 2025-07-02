@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Update Nexus repository URLs for publishing
+
 ## v0.1.13
 
 - Fix ios type generation for nested collections
