@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.13
 
 - Fix ios type generation for nested collections
 - Escape csharp identifier if it is a reserved keyword
