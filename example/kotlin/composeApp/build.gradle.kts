@@ -79,8 +79,13 @@ android {
 }
 
 ksp {
+    // Configure C# binding generation (optional - these are the defaults)
     arg("mauikmp.csharpIOSBindingNamespace", "Voize")
     arg("mauikmp.csharpIOSBindingPrefix", "Shared")
+    
+    // To use custom values, uncomment and modify:
+    // arg("mauikmp.csharpIOSBindingNamespace", "MyCompany.Mobile")
+    // arg("mauikmp.csharpIOSBindingPrefix", "Native")
 }
 
 dependencies {
