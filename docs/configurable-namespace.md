@@ -9,14 +9,14 @@ The KSP processor now supports configurable namespace and prefix parameters for 
 ## Configuration Parameters
 
 ### `mauikmp.csharpIOSBindingNamespace`
-- **Default**: `"Voize"`
+- **Required**: Yes
 - **Description**: The namespace used for generated C# bindings
 - **Usage**: This will be the namespace that wraps all generated C# interfaces
 
 ### `mauikmp.csharpIOSBindingPrefix`
-- **Default**: `"Shared"`
+- **Required**: Yes
 - **Description**: The prefix used for generated C# class names
-- **Usage**: This prefix is prepended to all generated C# interface names
+- **Usage**: This prefix is prepended to all generated C# interface names and should match the prefix configured in the Kotlin framework generation to ensure consistency between the Kotlin Objective-C headers and the C# bindings
 
 ## How to Configure
 
@@ -31,18 +31,7 @@ ksp {
 
 ## Example
 
-### Before (hardcoded)
-```csharp
-namespace Voize
-{
-    interface SharedBase : ObjCRuntime.INativeObject
-    {
-        // ...
-    }
-}
-```
-
-### After (configurable)
+### Before (required configuration)
 ```kotlin
 // In build.gradle.kts
 ksp {
@@ -51,6 +40,7 @@ ksp {
 }
 ```
 
+### After (generated C# bindings)
 ```csharp
 namespace MyCompany.Mobile
 {
@@ -60,14 +50,6 @@ namespace MyCompany.Mobile
     }
 }
 ```
-
-## Backward Compatibility
-
-If no configuration is provided, the processor will use the default values:
-- Namespace: `"Voize"`
-- Prefix: `"Shared"`
-
-This ensures that existing projects continue to work without any changes.
 
 ## Multiple Targets
 

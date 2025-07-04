@@ -24,8 +24,8 @@ ksp {
 ```
 
 **Parameters:**
-- `mauikmp.csharpIOSBindingNamespace`: The namespace for generated C# bindings (default: "Voize")
-- `mauikmp.csharpIOSBindingPrefix`: The prefix for generated C# class names (default: "Shared")
+- `mauikmp.csharpIOSBindingNamespace`: The namespace for generated C# bindings (**required**)
+- `mauikmp.csharpIOSBindingPrefix`: The prefix for generated C# class names (**required**, should match Kotlin framework prefix)
 
 **Example:**
 ```kotlin
