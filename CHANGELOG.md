@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.1.15
 
 - Fix top-level function dummy class name if contains dot
 - Enforce non-suspend MauiBinding functions
