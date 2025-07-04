@@ -78,6 +78,16 @@ android {
     }
 }
 
+ksp {
+    // Configure C# binding generation (required)
+    arg("maui.kmp.csharp.ios.namespace", "Voize")
+    arg("maui.kmp.csharp.ios.frameworkPrefix", "Shared")
+    
+    // To use custom values, uncomment and modify:
+    // arg("maui.kmp.csharp.ios.namespace", "MyCompany.Mobile")
+    // arg("maui.kmp.csharp.ios.frameworkPrefix", "Native")
+}
+
 dependencies {
     debugImplementation(compose.uiTooling)
     add("kspCommonMainMetadata", libs.maui.kmp.ksp)
