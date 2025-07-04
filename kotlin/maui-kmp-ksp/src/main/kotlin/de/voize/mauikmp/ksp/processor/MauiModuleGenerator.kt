@@ -182,10 +182,10 @@ class MauiModuleGenerator(
     }
 
     /**
-     * TODO should be config parameter
+     * KSP configuration parameters for C# binding generation
      */
-    val csharpIOSBindingPrefix = "Shared"
-    private val csharpIOSBindingNamespace = "Voize"
+    val csharpIOSBindingPrefix = options["mauikmp.csharpIOSBindingPrefix"] ?: "Shared"
+    private val csharpIOSBindingNamespace = options["mauikmp.csharpIOSBindingNamespace"] ?: "Voize"
 
     private val KotlinAnyClassName =
         CSharp.ClassName(

@@ -79,8 +79,8 @@ android {
 }
 
 ksp {
-    arg("mauikmp.csharpIOSBindingNamespace", "Voize")
-    arg("mauikmp.csharpIOSBindingPrefix", "Shared")
+    arg("mauikmp.csharpIOSBindingNamespace", "TestNamespace")
+    arg("mauikmp.csharpIOSBindingPrefix", "TestPrefix")
 }
 
 dependencies {
