@@ -313,6 +313,14 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
+  [BaseType (typeof(SharedBase))]
+  interface SharedTestTopLevel_fooKt
+  {
+      [Static, Export ("fooString:")]
+    string Foo(string @string);
+
+
+  }
   [BaseType (typeof(Voize.SharedTestSealedType))]
   interface SharedTestSealedTypeOption1 : ObjCRuntime.INativeObject
   {

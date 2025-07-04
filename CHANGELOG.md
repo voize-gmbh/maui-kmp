@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Fix top-level function dummy class name if contains dot
+
 ## v0.1.14
 
 - Update Nexus repository URLs for publishing

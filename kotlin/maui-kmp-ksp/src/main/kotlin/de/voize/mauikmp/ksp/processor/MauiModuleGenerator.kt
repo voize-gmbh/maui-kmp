@@ -667,17 +667,19 @@ class MauiModuleGenerator(
         }
     }
 
-    private fun KSFile.toDummyClassName(): String {
+    private fun KSFile.toObjectCDummyClassName(): String {
         // replace file extension with first uppercase letter and remove dot
-        return fileName
-            .fold(("" to false)) { (acc, uppercase), c ->
-                when {
-                    c == '.' -> acc to true
-                    uppercase -> acc + c.uppercaseChar() to false
-                    else -> acc + c to false
-                }
-            }.first
-            .replaceFirstChar { it.uppercaseChar() }
+        // replace dots with underscores
+        val name =
+            fileName
+                .substringBeforeLast('.')
+                .replaceFirstChar { it.uppercaseChar() }
+                .replace('.', '_')
+        val extension =
+            fileName
+                .substringAfterLast('.', "")
+                .replaceFirstChar { it.uppercaseChar() }
+        return name + extension
     }
 
     private fun NamespaceSpec.Builder.generateTopLevelFunctions(
@@ -687,7 +689,7 @@ class MauiModuleGenerator(
         addDeclaration(
             InterfaceDeclarationSpec(
                 attributes = listOf("BaseType (typeof(${KotlinAnyClassName.simpleName}))"),
-                identifier = "${csharpIOSBindingPrefix}${file.toDummyClassName()}",
+                identifier = "${csharpIOSBindingPrefix}${file.toObjectCDummyClassName()}",
                 interfaceTypeList = emptyList(),
                 rawBody =
                     buildString {
