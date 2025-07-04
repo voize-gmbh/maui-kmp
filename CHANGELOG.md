@@ -3,6 +3,7 @@
 ## unreleased
 
 - Fix top-level function dummy class name if contains dot
+- Enforce non-suspend MauiBinding functions
 
 ## v0.1.14
 

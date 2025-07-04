@@ -139,20 +139,25 @@ class MauiModuleGenerator(
                 }
             }
 
+        functionSymbols.forEach { functionSymbol ->
+            require(Modifier.SUSPEND !in functionSymbol.modifiers) {
+                "MauiBinding functions must not be suspend functions: $functionSymbol at ${functionSymbol.location}"
+            }
+        }
+
         val (topLevelFunctions, classFunctions) = functionSymbols.partition { it.parentDeclaration == null }
         val (topLevelProperties, classProperties) = propertySymbols.partition { it.parentDeclaration == null }
 
-        val functionsByClass =
-            classFunctions.groupBy { annotatedNode ->
-                annotatedNode.parentDeclaration.let {
-                    when (it) {
-                        is KSClassDeclaration -> it
-                        else -> throw IllegalArgumentException(
-                            "MauiBinding functions must be declared in a class, object or top-level: $annotatedNode at ${annotatedNode.location}",
-                        )
-                    }
+        classFunctions.groupBy { annotatedNode ->
+            annotatedNode.parentDeclaration.let {
+                when (it) {
+                    is KSClassDeclaration -> it
+                    else -> throw IllegalArgumentException(
+                        "MauiBinding functions must be declared in a class, object or top-level: $annotatedNode at ${annotatedNode.location}",
+                    )
                 }
             }
+        }
         // TODO validate functions are in annotated classes
 
         val (validSymbols, invalidSymbols) = (classSymbols + topLevelFunctions + topLevelProperties).partition { it.validate() }
@@ -166,7 +171,7 @@ class MauiModuleGenerator(
             !invoked &&
             platforms.isIOS()
         ) {
-            generateiOSAppDefinition(rootNamespace, originatingKSFiles, wellKnownTypes)
+            generateIosAppDefinition(rootNamespace, originatingKSFiles, wellKnownTypes)
 
             invoked = true
         }
@@ -411,7 +416,7 @@ class MauiModuleGenerator(
         )
     }
 
-    private fun generateiOSAppDefinition(
+    private fun generateIosAppDefinition(
         namespace: MauiNamespaceTree.NamespaceNode,
         originatingKSFiles: List<KSFile>,
         wellKnownTypes: WellKnownTypes,
@@ -424,7 +429,7 @@ class MauiModuleGenerator(
                     .builder(csharpIOSBindingNamespace)
                     .apply {
                         generateKotlinDefaultTypes()
-                        generateiOSAppDefinition(namespace, wellKnownTypes)
+                        generateIosAppDefinition(namespace, wellKnownTypes)
                     }.build()
                     .writeTo(this)
             }
@@ -760,7 +765,7 @@ class MauiModuleGenerator(
         )
     }
 
-    private fun NamespaceSpec.Builder.generateiOSAppDefinition(
+    private fun NamespaceSpec.Builder.generateIosAppDefinition(
         namespace: MauiNamespaceTree.NamespaceNode,
         wellKnownTypes: WellKnownTypes,
     ) {
@@ -783,7 +788,7 @@ class MauiModuleGenerator(
             }
 
         namespace.children.forEach { child ->
-            generateiOSAppDefinition(child, wellKnownTypes)
+            generateIosAppDefinition(child, wellKnownTypes)
         }
     }
 
