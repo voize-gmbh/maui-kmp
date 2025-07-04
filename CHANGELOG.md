@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Implement configuration via KSP arguments
+
 ## v0.1.15
 
 - Fix top-level function dummy class name if contains dot

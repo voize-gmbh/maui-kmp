@@ -182,10 +182,12 @@ class MauiModuleGenerator(
     }
 
     /**
-     * TODO should be config parameter
+     * KSP configuration parameters for C# binding generation
      */
-    val csharpIOSBindingPrefix = "Shared"
-    private val csharpIOSBindingNamespace = "Voize"
+    val csharpIOSBindingPrefix = options["maui.kmp.csharp.ios.frameworkPrefix"] 
+        ?: error("Missing required KSP option: maui.kmp.csharp.ios.frameworkPrefix")
+    private val csharpIOSBindingNamespace = options["maui.kmp.csharp.ios.namespace"] 
+        ?: error("Missing required KSP option: maui.kmp.csharp.ios.namespace")
 
     private val KotlinAnyClassName =
         CSharp.ClassName(
