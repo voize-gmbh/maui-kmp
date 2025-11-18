@@ -3,6 +3,9 @@
 ## unreleased
 
 - Implement configuration via KSP arguments
+- Update to net9.0-android target framework for android binding project
+- Sort dependencies in generated android csproj file
+- Also fetch prerelease versions from dotnet nuget
 
 ## v0.1.15
 
