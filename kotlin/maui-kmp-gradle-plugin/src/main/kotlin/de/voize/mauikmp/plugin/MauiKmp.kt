@@ -19,6 +19,7 @@ import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.exclude
 import org.gradle.kotlin.dsl.named
 import java.io.File
+import org.gradle.api.Task
 
 interface MauiKmpExtension {
     val mauiNuGetConfigurationName: Property<String>
@@ -120,7 +121,7 @@ class MauiKmp : Plugin<Project> {
                 "https://raw.githubusercontent.com/dotnet/android-libraries/refs/heads/main/config.json",
             )
 
-        project.tasks.create("generatePackageReferences") {
+        project.tasks.create<Task>("generatePackageReferences") {
             inputs.files(mauiNuGetConfiguration, dotnetAndroidMapping)
             outputs.file(extension.csprojFile)
 
@@ -149,7 +150,7 @@ class MauiKmp : Plugin<Project> {
                                         null
                                     }
                                 }
-                    ).groupBy { it.id }.map { (_, packageReferences) ->
+                    ).groupBy { it.id }.values.sortedBy { it.first().id }.map { packageReferences ->
                         val packageReference = packageReferences.first()
                         "  <PackageReference Include=\"${packageReference.id}\" Version=\"${packageReference.version}\" /> <!-- ${
                             packageReferences.joinToString {
@@ -170,7 +171,7 @@ class MauiKmp : Plugin<Project> {
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <Version>${project.version}</Version>
-            <TargetFramework>net8.0-android</TargetFramework>
+            <TargetFramework>net9.0-android</TargetFramework>
             <SupportedOSPlatformVersion>${extension.androidMinSdk.get()}</SupportedOSPlatformVersion>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>

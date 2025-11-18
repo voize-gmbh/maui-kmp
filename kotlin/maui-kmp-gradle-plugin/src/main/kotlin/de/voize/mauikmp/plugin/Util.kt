@@ -1,13 +1,13 @@
 package de.voize.mauikmp.plugin
 
 import groovy.json.JsonSlurper
+import java.io.ByteArrayOutputStream
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ResolvedConfiguration
 import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.Usage
 import org.gradle.kotlin.dsl.named
-import java.io.ByteArrayOutputStream
 
 fun Configuration.configureConfiguration(project: Project) {
     attributes {
@@ -59,6 +59,9 @@ fun Project.getNuGetPackageForMavenDependency(searchTerm: String): List<Map<Stri
                         searchTerm,
                         "--format",
                         "json",
+                        "--prerelease",
+                        "--verbosity",
+                        "minimal",
                     )
                     standardOutput = stdout
                     errorOutput = System.err
