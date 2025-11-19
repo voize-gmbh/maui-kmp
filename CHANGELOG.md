@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.2.0
 
 - Implement configuration via KSP arguments
 - Update to net9.0-android target framework for android binding project
