@@ -5,9 +5,12 @@ import com.android.build.gradle.tasks.BundleAar
 import com.kezong.fataar.FatAarExtension
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import java.io.File
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
@@ -18,12 +21,11 @@ import org.gradle.kotlin.dsl.add
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.exclude
 import org.gradle.kotlin.dsl.named
-import java.io.File
-import org.gradle.api.Task
 
 interface MauiKmpExtension {
     val mauiNuGetConfigurationName: Property<String>
     val dependencyNotation: Property<String>
+    val dependencyConfiguration: Property<ExternalModuleDependency.() -> Unit>
     val csprojFile: Property<File>
     val bundleTask: Property<BundleAar>
     val mavenArtifactToNugetPackageTagOverrider: MapProperty<MavenCoordinatesWithoutVersion, MavenCoordinatesWithoutVersion>
@@ -35,6 +37,9 @@ class MauiKmp : Plugin<Project> {
     override fun apply(project: Project) {
         val extension = project.extensions.create<MauiKmpExtension>("mauiKmp")
         extension.mauiNuGetConfigurationName.convention("mauiNuGetConfiguration")
+        extension.dependencyConfiguration.convention {
+            // no-op by default
+        }
         project.afterEvaluate {
             extension.bundleTask.convention(project.tasks.named<BundleAar>("bundleReleaseAar"))
         }
@@ -100,7 +105,10 @@ class MauiKmp : Plugin<Project> {
                         add(
                             project.dependencies.create(
                                 extension.dependencyNotation.get(),
-                            ),
+                            ) {
+                                val block = extension.dependencyConfiguration.get()
+                                this.block()
+                            },
                         )
                     }
                 }
