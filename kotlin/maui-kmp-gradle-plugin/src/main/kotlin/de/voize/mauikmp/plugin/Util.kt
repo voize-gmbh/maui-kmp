@@ -47,21 +47,68 @@ data class NuGetPackageReference(
     val mavenCoordinates: String,
 )
 
-fun Project.getNuGetPackageForMavenDependency(searchTerm: String): List<Map<String, String>> {
+fun Project.getNuGetPackageForMavenDependency(
+    searchTerm: String,
+    withPrereleases: Boolean,
+): List<Map<String, String>> {
     val searchResults =
         ByteArrayOutputStream()
             .use { stdout ->
                 exec {
                     commandLine(
-                        "dotnet",
-                        "package",
-                        "search",
-                        searchTerm,
-                        "--format",
-                        "json",
-                        "--prerelease",
-                        "--verbosity",
-                        "minimal",
+                        listOf(
+                            "dotnet",
+                            "package",
+                            "search",
+                            searchTerm,
+                            "--format",
+                            "json",
+                            "--prerelease",
+                            "--verbosity",
+                            "minimal",
+                        ) +
+                            if (withPrereleases) {
+                                listOf("--prerelease")
+                            } else {
+                                emptyList()
+                            },
+                    )
+                    standardOutput = stdout
+                    errorOutput = System.err
+                }
+                JsonSlurper().parse(stdout.toByteArray()) as Map<String, Any>
+            }.getValue("searchResult") as List<Map<String, Any>>
+
+    return searchResults.flatMap { it.getValue("packages") as List<Map<String, String>> }
+}
+
+fun Project.listNuGetPackageWithName(
+    name: String,
+    withPrereleases: Boolean,
+): List<Map<String, String>> {
+    val searchResults =
+        ByteArrayOutputStream()
+            .use { stdout ->
+                exec {
+                    commandLine(
+                        listOf(
+                            "dotnet",
+                            "package",
+                            "search",
+                            name,
+                            "--format",
+                            "json",
+                            "--verbosity",
+                            "minimal",
+                            "--exact-match",
+                            "--take",
+                            "1000",
+                        ) +
+                            if (withPrereleases) {
+                                listOf("--prerelease")
+                            } else {
+                                emptyList()
+                            },
                     )
                     standardOutput = stdout
                     errorOutput = System.err
@@ -78,25 +125,72 @@ fun Project.getNuGetPackageForMavenDependency(
     version: String,
 ): NuGetPackageReference {
     val searchTerm = "tags:\"artifact_versioned=$group:$name:$version\""
-    val packagesWithMatchingVersion = getNuGetPackageForMavenDependency(searchTerm)
-
-    val packages =
-        packagesWithMatchingVersion.ifEmpty {
-            logger.warn("No matching version found for group: $group:$name:$version. Using latest version.")
-            getNuGetPackageForMavenDependency(searchTerm = "tags:\"artifact=$group:$name\"")
+    val mavenCoordinates = "$group:$name:$version"
+    val packageWithMatchingVersion =
+        (
+            getNuGetPackageForMavenDependency(searchTerm, withPrereleases = false).firstOrNull()
+                ?: getNuGetPackageForMavenDependency(searchTerm, withPrereleases = true).firstOrNull()
+        )?.let {
+            NuGetPackageReference(
+                id = it.getValue("id"),
+                version = it.getValue("latestVersion"),
+                mavenCoordinates = mavenCoordinates,
+            )
         }
 
-    if (packages.isEmpty()) {
+    val bestPackage =
+        packageWithMatchingVersion ?: run {
+            val packageWithAnyVersion =
+                getNuGetPackageForMavenDependency(
+                    searchTerm = "tags:\"artifact=$group:$name\"",
+                    withPrereleases = true,
+                ).firstOrNull()?.let {
+                    NuGetPackageReference(
+                        id = it.getValue("id"),
+                        version = it.getValue("latestVersion"),
+                        mavenCoordinates = mavenCoordinates,
+                    )
+                }
+            packageWithAnyVersion?.let {
+                logger.warn(
+                    "NuGet package search did not return exact match for group: $group:$name:$version." +
+                        " Trying to manually find matching version.",
+                )
+                val nuGetPackageId = it.id
+                val allVersions =
+                    // fist list stable versions, then prerelease versions
+                    listNuGetPackageWithName(nuGetPackageId, withPrereleases = false) +
+                        listNuGetPackageWithName(nuGetPackageId, withPrereleases = true)
+                val matchingVersion =
+                    allVersions
+                        // use first to get the lowest version in case of multiple matches, this is the lower bound we need, nuget will resolve higher versions automatically
+                        // if we use the highest version here, this may lead to issues if this uses newer transitive dependencies than the ones resolved by gradle
+                        // these issues can also happen if we use the lowest version, but are less likely
+                        // these issues must be resolved by the user then by overriding the nuget package reference versions
+                        .firstOrNull {
+                            it
+                                .getValue("version")
+                                .startsWith(version) // do a prefix match TODO find better way to match versions
+                        }?.let {
+                            return NuGetPackageReference(
+                                id = it.getValue("id"),
+                                version = it.getValue("version"),
+                                mavenCoordinates = mavenCoordinates,
+                            )
+                        }
+                if (matchingVersion != null) {
+                    matchingVersion
+                } else {
+                    logger.warn("No matching version found for group: $group:$name:$version. Using latest version.")
+                    it
+                }
+            }
+        }
+
+    if (bestPackage == null) {
         throw IllegalStateException("No matching NuGet package found for group: $group:$name:$version")
     } else {
-        val packageInfo = packages.first()
-        val nuGetPackageId = packageInfo.getValue("id")
-        val nuGetPackageVersion = packageInfo.getValue("latestVersion")
-        return NuGetPackageReference(
-            id = nuGetPackageId,
-            version = nuGetPackageVersion,
-            mavenCoordinates = "$group:$name:$version",
-        )
+        return bestPackage
     }
 }
 

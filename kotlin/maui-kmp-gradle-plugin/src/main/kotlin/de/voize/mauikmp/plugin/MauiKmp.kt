@@ -175,6 +175,7 @@ class MauiKmp : Plugin<Project> {
             <SupportedOSPlatformVersion>${extension.androidMinSdk.get()}</SupportedOSPlatformVersion>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>
+            <NoWarn>NU1605</NoWarn>
           </PropertyGroup>
           <ItemGroup>
             <AndroidLibrary Include="$pathToFatAar">

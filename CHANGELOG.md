@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## unreleased
+
+- Implement nuget fetching workaround for finding matching versions
+
 ## v0.2.0
 
 - Implement configuration via KSP arguments
