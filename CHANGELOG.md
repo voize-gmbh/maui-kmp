@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.2.1
 
 - Implement nuget fetching workaround for finding matching versions
 
