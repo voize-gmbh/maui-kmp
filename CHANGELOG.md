@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.3.0
 
 - Add dependencyConfiguration to mauiKmp plugin configuration
 
