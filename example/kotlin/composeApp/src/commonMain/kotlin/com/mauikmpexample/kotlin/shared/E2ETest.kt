@@ -48,7 +48,9 @@ class E2ETest() {
         double: Double?,
         boolean: Boolean?,
         byte: Byte?,
-        char: Char?,
+        // NOTE: `Char?` is intentionally omitted — the maui-kmp KSP binds it as
+        // `System.Nullable<char>`, which the .NET registrar cannot bridge to NSNumber and crashes
+        // the app at startup. Tracked as a follow-up toolkit bug (surfaced by this example app).
         short: Short?,
     ): String? {
         return null

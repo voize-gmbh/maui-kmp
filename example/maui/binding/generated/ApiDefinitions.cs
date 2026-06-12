@@ -147,8 +147,8 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     [Export ("testDefaultTypesString:int:long:float:double:boolean:byte:char:short:")]
     string TestDefaultTypes(string @string, int @int, long @long, float @float, double @double, bool boolean, byte @byte, char @char, short @short);
 
-    [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:char:short:"), NullAllowed]
-    string TestDefaultTypesNullable([NullAllowed] string @string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber @int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber @long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber @float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber @double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber @byte, [ObjCRuntime.BindAs (typeof (char?)), NullAllowed] Foundation.NSNumber @char, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber @short);
+    [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:short:"), NullAllowed]
+    string TestDefaultTypesNullable([NullAllowed] string @string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber @int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber @long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber @float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber @double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber @byte, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber @short);
 
     [Export ("testListAndMapList:map:nestedList:nestedMap:nestedListInMap:nestedMapInList:complexList:complexMap:")]
     Foundation.NSNumber[] TestListAndMap(Foundation.NSString[] list, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, Foundation.NSArray<Foundation.NSString>[] nestedList, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSArray<Foundation.NSString>> nestedListInMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>[] nestedMapInList, Voize.SharedTest[] complexList, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap);
@@ -214,6 +214,76 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedGenericSubclass : ObjCRuntime.INativeObject
   {
   
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedInteropTest : ObjCRuntime.INativeObject
+  {
+      [Static, Export ("new"), DesignatedInitializer]
+    SharedInteropTest New ();
+
+    [Export ("suspendString")]
+    Voize.SharedTask SuspendString();
+
+    [Export ("suspendEchoValue:")]
+    Voize.SharedTask SuspendEcho(string value);
+
+    [Export ("suspendNullableStringReturnNull:")]
+    Voize.SharedTask SuspendNullableString(bool returnNull);
+
+    [Export ("suspendUnit")]
+    Voize.SharedTask SuspendUnit();
+
+    [Export ("failingSuspend")]
+    Voize.SharedTask FailingSuspend();
+
+    [Export ("intEvents")]
+    Voize.SharedObservableFlow IntEvents();
+
+    [Export ("dataClassEvents")]
+    Voize.SharedObservableFlow DataClassEvents();
+
+    [Export ("failingEvents")]
+    Voize.SharedObservableFlow FailingEvents();
+
+    [Export ("fastEvents")]
+    Voize.SharedObservableFlow FastEvents();
+
+    [Export ("withCallbackOnResult:")]
+    void WithCallback(System.Action<Foundation.NSString> onResult);
+
+    [Export ("withParameterizedCallbackTimes:onEach:")]
+    void WithParameterizedCallback(int times, System.Action<Foundation.NSNumber> onEach);
+
+    [Export ("throwError")]
+    void ThrowError();
+
+    [Export ("nullableRoundtripValue:"), NullAllowed]
+    string NullableRoundtrip([NullAllowed] string value);
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedDemoSdk : ObjCRuntime.INativeObject
+  {
+      [Static, Export ("new"), DesignatedInitializer]
+    SharedDemoSdk New ();
+
+    [Export ("startedState")]
+    Voize.SharedObservableBooleanFlow StartedState();
+
+    [Export ("start")]
+    void Start();
+
+    [Export ("stop")]
+    void Stop();
+
+    [Export ("restart")]
+    void Restart();
+
+    [Export ("doBackgroundWork")]
+    Voize.SharedTask DoBackgroundWork();
+
+
   }
   [BaseType (typeof(Voize.SharedBase))]
   interface SharedTest : ObjCRuntime.INativeObject
@@ -303,6 +373,23 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   
   }
   [BaseType (typeof(Voize.SharedBase))]
+  interface SharedDemoData : ObjCRuntime.INativeObject
+  {
+      [Export ("initWithId:label:nested:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (int id, string label, Voize.SharedDemoDataNested nested);
+
+    [Export ("id")]
+    int Id { get; }
+
+    [Export ("label")]
+    string Label { get; }
+
+    [Export ("nested")]
+    Voize.SharedDemoDataNested Nested { get; }
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
   interface SharedNonNested : ObjCRuntime.INativeObject
   {
       [Export ("initWithBar:"), DesignatedInitializer]
@@ -318,6 +405,58 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   {
       [Static, Export ("fooString:")]
     string Foo(string @string);
+
+
+  }
+  [BaseType (typeof(SharedKotlinEnum))]
+  interface SharedDispatcher : ObjCRuntime.INativeObject
+  {
+      [Static]
+    [Export ("default_")]
+    SharedDispatcher Default { get; }
+    [Static]
+    [Export ("main")]
+    SharedDispatcher Main { get; }
+    [Static]
+    [Export ("io")]
+    SharedDispatcher IO { get; }
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedObservableFlow : ObjCRuntime.INativeObject
+  {
+      [Export ("subscribeOnNext:onError:onCompleted:dispatcher:")]
+    System.Action Subscribe(System.Action<Foundation.NSObject?> onNext, System.Action<Voize.SharedKotlinThrowable> onError, System.Action onCompleted, Voize.SharedDispatcher dispatcher);
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedObservableBooleanFlow : ObjCRuntime.INativeObject
+  {
+      [Export ("subscribeOnNext:onError:onCompleted:dispatcher:")]
+    System.Action Subscribe(System.Action<Foundation.NSNumber> onNext, System.Action<Voize.SharedKotlinThrowable> onError, System.Action onCompleted, Voize.SharedDispatcher dispatcher);
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedTask : ObjCRuntime.INativeObject
+  {
+      [Export ("registerCallbacksOnSuccess:onError:")]
+    void RegisterCallbacks(System.Action<Foundation.NSObject?> onSuccess, System.Action<Voize.SharedKotlinThrowable> onError);
+
+
+  }
+  [BaseType (typeof(Voize.SharedTask))]
+  interface SharedCompletableTask : ObjCRuntime.INativeObject
+  {
+      [Static, Export ("new")]
+    SharedCompletableTask New ();
+
+    [Export ("completeValue:")]
+    void Complete([NullAllowed] Foundation.NSObject value);
+
+    [Export ("completeExceptionallyThrowable:")]
+    void CompleteExceptionally(Voize.SharedKotlinThrowable throwable);
 
 
   }
@@ -424,6 +563,17 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
     [Export ("age")]
     int Age { get; }
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedDemoDataNested : ObjCRuntime.INativeObject
+  {
+      [Export ("initWithValue:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (bool value);
+
+    [Export ("value")]
+    bool Value { get; }
 
 
   }
