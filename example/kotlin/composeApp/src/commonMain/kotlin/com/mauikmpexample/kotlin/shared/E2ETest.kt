@@ -11,10 +11,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 @MauiBinding
-class E2ETest() {
-
-    @MauiBinding
-    constructor(test: Test) : this() {
+class E2ETest  @MauiBinding @Throws(Exception::class) constructor(private val test: Test)  {
+    
+    init {
         println(test)
     }
 
@@ -25,6 +24,7 @@ class E2ETest() {
     val nullableString: String? = null
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testDefaultTypes(
         string: String,
         int: Int,
@@ -40,6 +40,7 @@ class E2ETest() {
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testDefaultTypesNullable(
         string: String?,
         int: Int?,
@@ -57,6 +58,7 @@ class E2ETest() {
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testListAndMap(
         list: List<String>,
         map: Map<String, String>,
@@ -71,6 +73,7 @@ class E2ETest() {
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testListAndMapNullable(
         list: List<String>?,
         map: Map<String, String>?,
@@ -89,17 +92,20 @@ class E2ETest() {
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun example(input: TestSealedType, testEnum: Enum?): Test {
         return Test("Erik", listOf(), mapOf(), 30)
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testSealedClassProperties(test: TestSealedClassProperties): TestSealedClassProperties {
         return test
     }
 
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testKotlinDateTime(
         duration: Duration,
         durationOrNull: Duration?,
@@ -112,6 +118,7 @@ class E2ETest() {
     }
 
      @MauiBinding
+     @Throws(Exception::class)
     fun testKotlinDateTimeList(
         duration: List<Duration>,
         instant: List<Instant>,
@@ -123,30 +130,91 @@ class E2ETest() {
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun getDateTimeTest(): DateTimeTest {
         error("Not implemented")
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testTypeAlias(test: TestTypeAlias): TestTypeAlias {
         return test
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testSealedSubtype(test: TestSealedType.Option1): TestSealedType.Option1 {
         return test
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testSealedCustomDiscriminator(test: TestSealedTypeWithCustomDiscriminator) {
 
     }
 
     @MauiBinding
+    @Throws(Exception::class)
     fun testMapWithEnumKey(map: Map<Enum, String>): Map<Enum, String> {
         return map
     }
+
+    /**
+     * End-to-end test for the `kotlin.time.Instant` → `SharedKotlinInstant` binding mapping.
+     *
+     * `kotlin.time.Instant` (stdlib, stable since Kotlin 2.2.0) is distinct from
+     * `kotlinx.datetime.Instant` (external library). The KSP maps it to a separate C# type
+     * (`${prefix}KotlinInstant`). A roundtrip through the boundary verifies: the selector
+     * matches the K/N header, the C# type resolves correctly, and the epoch-millis value survives.
+     */
+    @MauiBinding
+    @Throws(Exception::class)
+    fun testKotlinTimeInstant(instant: kotlin.time.Instant): kotlin.time.Instant {
+        return instant
+    }
+
+    @MauiBinding
+    @Throws(Exception::class)
+    fun testKotlinTimeInstantNullable(instant: kotlin.time.Instant?): kotlin.time.Instant? {
+        return instant
+    }
+
+    @MauiBinding(canThrow = false)
+    fun nowFromClock(clock: kotlin.time.Clock): kotlin.time.Instant {
+        return clock.now()
+    }
+
+    @MauiBinding(canThrow = false)
+    fun systemClock(): kotlin.time.Clock {
+        return kotlin.time.Clock.System
+    }
+
+    @MauiBinding(canThrow = false)
+    fun clockSystemNow(): kotlin.time.Instant {
+        return kotlin.time.Clock.System.now()
+    }
+
+    /**
+     * Returns a data class carrying a `kotlin.time.Instant`. Exposing it here makes the KSP
+     * discover `InstantData` transitively and emit its binding (with the designated
+     * `initWithLabel:timestamp:` constructor). Because its only constructor takes required
+     * parameters, the binding gets `[DisableDefaultCtor]` — `new SharedInstantData()` must not
+     * compile; consumers must pass a label and an Instant.
+     */
+    @MauiBinding(canThrow = false)
+    fun echoInstantData(data: InstantData): InstantData {
+        return data
+    }
 }
+
+/**
+ * A data-class DTO (discovered transitively via [E2ETest.echoInstantData]) whose constructor
+ * requires a non-null `kotlin.time.Instant`. Used to verify the DisableDefaultCtor fix end-to-end.
+ */
+data class InstantData(
+    val label: String,
+    val timestamp: kotlin.time.Instant,
+)
 
 
 @Serializable
@@ -250,7 +318,7 @@ data class DateTimeTest(
 )
 
 @MauiBinding
-class ClassWithConstructor @MauiBinding constructor(
+class ClassWithConstructor @MauiBinding @Throws(Exception::class) constructor(
     val string: String,
     val int: Int,
     val long: Long,
@@ -262,6 +330,7 @@ class ClassWithConstructor @MauiBinding constructor(
     val short: Short,
 ) {
     @MauiBinding
+    @Throws(Exception::class)
     fun testDefaultTypes(): String {
         return "Hello World"
     }
@@ -270,6 +339,7 @@ class ClassWithConstructor @MauiBinding constructor(
 @MauiBinding
 open class GenericClass<T: String?>(val value: T) {
     @MauiBinding
+    @Throws(Exception::class)
     fun process(other: T): T {
         return other
     }

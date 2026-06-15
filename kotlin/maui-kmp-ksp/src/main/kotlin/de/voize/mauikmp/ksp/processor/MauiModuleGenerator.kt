@@ -171,7 +171,9 @@ class MauiModuleGenerator(
             !invoked &&
             platforms.isIOS()
         ) {
+            enforceSyncBindingErrorContract(classSymbols, topLevelFunctions, wellKnownTypes)
             generateIosAppDefinition(rootNamespace, originatingKSFiles, wellKnownTypes)
+            throwsWrapperGenerator.generate(rootNamespace, originatingKSFiles, wellKnownTypes)
 
             invoked = true
         }
@@ -182,12 +184,199 @@ class MauiModuleGenerator(
     }
 
     /**
+     * Enforces the synchronous error contract on the iOS pass:
+     * 1. Every annotated `@Throws` must list at least one exception class (an empty `@Throws()`
+     *    does not make Kotlin/Native bridge anything) and should not list `CancellationException`
+     *    (cancellation must be rethrown, not turned into an `NSError`). Always checked.
+     * 2. If [requireThrowsOnSyncBindings] is on, every synchronous `@MauiBinding`
+     *    function/constructor must be annotated `@Throws`, so a thrown exception reaches the C#
+     *    host as a catchable `NSError` instead of terminating the process. Adapter classes and
+     *    functions returning an adapter type (see [asyncAdapterTypeNames]) are exempt, as are data
+     *    classes and enums (pure data carriers, their members do not run throwing user logic).
+     * 3. A member annotated `@MauiBinding(canThrow = false)` opts out of (2) per-member — the author
+     *    asserts it never throws. Combining `canThrow = false` with `@Throws` is contradictory and
+     *    reported as an error.
+     */
+    private fun enforceSyncBindingErrorContract(
+        classSymbols: List<KSClassDeclaration>,
+        topLevelFunctions: List<KSFunctionDeclaration>,
+        wellKnownTypes: WellKnownTypes,
+    ) {
+        fun returnsAsyncAdapter(function: KSFunctionDeclaration): Boolean {
+            if (function.isConstructor()) return false
+            val returnTypeName =
+                function.returnType
+                    ?.resolve()
+                    ?.declaration
+                    ?.qualifiedName
+                    ?.asString()
+            return returnTypeName in asyncAdapterTypeNames
+        }
+
+        fun check(
+            function: KSFunctionDeclaration,
+            owner: String,
+        ) {
+            val throwsClasses = function.throwsExceptionClassNames()
+            val kind = if (function.isConstructor()) "constructor" else "function"
+
+            // canThrow = false is the author asserting the member never throws: skip the @Throws
+            // requirement entirely. Pairing it with @Throws is contradictory, so flag that.
+            if (!function.mauiBindingCanThrow(wellKnownTypes)) {
+                if (throwsClasses != null) {
+                    logger.error(
+                        "MauiBinding $kind '$owner' declares @MauiBinding(canThrow = false) but is " +
+                            "also annotated @Throws; these contradict each other. Keep @Throws if it " +
+                            "can throw (errors become catchable NSErrors), or canThrow = false if it " +
+                            "never throws — not both.",
+                        function,
+                    )
+                }
+                return
+            }
+
+            if (throwsClasses != null) {
+                if (throwsClasses.isEmpty()) {
+                    logger.error(
+                        "@Throws on MauiBinding $kind '$owner' must list at least one exception " +
+                            "class (use @Throws(Exception::class)); an empty @Throws() does not make " +
+                            "Kotlin/Native bridge exceptions to NSError.",
+                        function,
+                    )
+                }
+                // Match FQN exactly — a suffix check would fire on user-defined MyCancellationException.
+                if (throwsClasses.any { it == "kotlinx.coroutines.CancellationException" || it == "kotlin.coroutines.CancellationException" }) {
+                    logger.warn(
+                        "@Throws on MauiBinding $kind '$owner' lists CancellationException; " +
+                            "cancellation should be rethrown, not bridged to NSError.",
+                        function,
+                    )
+                }
+                return
+            }
+
+            if (!requireThrowsOnSyncBindings || returnsAsyncAdapter(function)) return
+
+            logger.error(
+                "MauiBinding synchronous $kind '$owner' must be annotated @Throws(Exception::class) " +
+                    "so a thrown exception reaches the C# host as a catchable NSError instead of " +
+                    "terminating the process. If it returns an async adapter (Task/ObservableFlow), " +
+                    "declare that type in the KSP option 'maui.kmp.ios.asyncAdapterTypes'; or set " +
+                    "'maui.kmp.ios.requireThrowsOnSyncBindings=false' to opt out globally.",
+                function,
+            )
+        }
+
+        classSymbols.forEach { declaration ->
+            // canThrow = false on a class has no effect — it is only meaningful on functions/constructors.
+            if (!declaration.mauiBindingCanThrow(wellKnownTypes)) {
+                logger.warn(
+                    "@MauiBinding(canThrow = false) on class '${declaration.simpleName.asString()}' " +
+                        "has no effect; place canThrow = false on individual functions or constructors instead.",
+                    declaration,
+                )
+            }
+            if (declaration.qualifiedName?.asString() in asyncAdapterTypeNames) return@forEach
+            if (Modifier.DATA in declaration.modifiers) return@forEach
+            if (declaration.classKind == ClassKind.ENUM_CLASS) return@forEach
+            declaration.getMauiFunctionsAndConstructors(wellKnownTypes).forEach { function ->
+                val memberName = if (function.isConstructor()) "<init>" else function.simpleName.asString()
+                check(function, "${declaration.simpleName.asString()}.$memberName")
+            }
+        }
+        topLevelFunctions.forEach { function ->
+            check(function, function.simpleName.asString())
+        }
+    }
+
+    /**
      * KSP configuration parameters for C# binding generation
      */
     val csharpIOSBindingPrefix = options["maui.kmp.csharp.ios.frameworkPrefix"] 
         ?: error("Missing required KSP option: maui.kmp.csharp.ios.frameworkPrefix")
-    private val csharpIOSBindingNamespace = options["maui.kmp.csharp.ios.namespace"] 
+    private val csharpIOSBindingNamespace = options["maui.kmp.csharp.ios.namespace"]
         ?: error("Missing required KSP option: maui.kmp.csharp.ios.namespace")
+
+    /**
+     * When true (default), the iOS pass fails the build if a synchronous `@MauiBinding`
+     * function/constructor lacks `@Throws(Exception::class)`. Without it Kotlin/Native does not
+     * bridge a thrown exception to an `NSError`, so it terminates the process instead of being
+     * catchable in the C# host — the exact P1 this enforcement guards against. Opt out with
+     * `maui.kmp.ios.requireThrowsOnSyncBindings=false`.
+     */
+    private val requireThrowsOnSyncBindings =
+        options["maui.kmp.ios.requireThrowsOnSyncBindings"]?.toBooleanStrictOrNull() ?: true
+
+    /**
+     * When true, emit a deprecated compatibility constructor for every `@Throws` constructor (in
+     * `ThrowsWrappers.cs`) so existing `new SharedX(...)` call sites keep compiling during a
+     * migration, with an `[Obsolete]` warning pointing at the factory. Default off: `new SharedX()`
+     * becomes a hard compile error instead (the binding interface gets `[DisableDefaultCtor]`
+     * regardless, so it is never the old silent half-initialized object). Opt in with
+     * `maui.kmp.ios.emitDeprecatedConstructorShims=true`.
+     */
+    private val emitDeprecatedConstructorShims =
+        options["maui.kmp.ios.emitDeprecatedConstructorShims"]?.toBooleanStrictOrNull() ?: false
+
+    /**
+     * Name of the generated static class that holds the idiomatic `@Throws` wrappers (and the
+     * `CreateX` constructor factories). Defaults to `MauiKmpThrowsWrappers`; a consumer can set its
+     * own, e.g. `VoizeSdk`, via `maui.kmp.ios.throwsWrapperClassName`. The name also appears in the
+     * deprecated-shim `[Obsolete]` messages so they point at the right factory.
+     */
+    private val throwsWrapperClassName =
+        options["maui.kmp.ios.throwsWrapperClassName"] ?: "MauiKmpThrowsWrappers"
+
+    /**
+     * Fully-qualified names of the consumer's async adapter types (e.g. `Task` / `ObservableFlow`).
+     * They are exempt from [requireThrowsOnSyncBindings] both as classes (their own
+     * `subscribe`/`registerCallbacks`/… marshal errors via callbacks, not by throwing) and as
+     * return types (a function returning one defers its work into the adapter). The toolkit cannot
+     * know these types, so the consumer declares them via `maui.kmp.ios.asyncAdapterTypes` (comma
+     * separated).
+     */
+    private val asyncAdapterTypeNames: Set<String> =
+        options["maui.kmp.ios.asyncAdapterTypes"]
+            .orEmpty()
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+    /**
+     * Emits `ThrowsWrappers.cs` (idiomatic wrappers for @Throws-annotated bindings) as a separate
+     * generated file. Lives in its own class to keep this generator focused on `ApiDefinitions.cs`;
+     * the [CSharpThrowsWrapperGenerator.Names] implementation delegates back to the private
+     * name/type mapping here so both files always agree.
+     */
+    private val throwsWrapperGenerator by lazy {
+        CSharpThrowsWrapperGenerator(
+            codeGenerator = codeGenerator,
+            bindingNamespace = csharpIOSBindingNamespace,
+            wrapperClassName = throwsWrapperClassName,
+            emitDeprecatedConstructorShims = emitDeprecatedConstructorShims,
+            names =
+                object : CSharpThrowsWrapperGenerator.Names {
+                    override fun classIdentifier(declaration: KSClassDeclaration): String =
+                        declaration.getCSharpObjectCNamespace() + declaration.getCSharpObjectCName()
+
+                    override fun methodName(function: KSFunctionDeclaration): String = function.getCSharpObjectCName()
+
+                    override fun errorParameterIndex(function: KSFunctionDeclaration): Int =
+                        this@MauiModuleGenerator.errorParameterIndex(function)
+
+                    override fun typeName(type: KSType): CSharp.TypeName {
+                        // Match the types bgen exposes on the compiled binding method (the wrapper
+                        // calls it and passes/returns these): nullable primitives surface as their
+                        // BindAs target (`int?`), nullable strings as `string?`, collections as
+                        // `NSString[]`/`NSDictionary<…>`, etc. — which the default (unwrapped) mapping
+                        // reproduces. Type aliases must be expanded: ApiDefinitions.cs resolves them
+                        // via top-level `using` alias directives, but this standalone file has none.
+                        return type.expandTypeAliases().getCSharpObjectCTypeName()
+                    }
+                },
+        )
+    }
 
     private val KotlinAnyClassName =
         CSharp.ClassName(
@@ -347,6 +536,78 @@ class MauiModuleGenerator(
                     """.trimIndent(),
             ),
         )
+        // kotlin.time.Instant (stdlib, distinct from kotlinx.datetime.Instant)
+        val kotlinTimeInstantClassName = "${csharpIOSBindingPrefix}KotlinInstant"
+        val kotlinTimeInstantCompanionClassName = "${kotlinTimeInstantClassName}Companion"
+        addDeclaration(
+            InterfaceDeclarationSpec(
+                attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
+                identifier = kotlinTimeInstantClassName,
+                interfaceTypeList = listOf(KotlinAnyClassName),
+                rawBody =
+                    """
+                    [Export ("toEpochMilliseconds")]
+                    long ToEpochMilliseconds ();
+
+                    [Static]
+                    [Export ("companion")]
+                    $kotlinTimeInstantCompanionClassName Companion { [Bind ("companion")] get; }
+                    """.trimIndent(),
+            ),
+        )
+        addDeclaration(
+            InterfaceDeclarationSpec(
+                attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
+                identifier = kotlinTimeInstantCompanionClassName,
+                interfaceTypeList = emptyList(),
+                rawBody =
+                    """
+                    [Export ("fromEpochMillisecondsEpochMilliseconds:")]
+                    $kotlinTimeInstantClassName FromEpochMilliseconds (long epochMilliseconds);
+
+                    [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment:")]
+                    $kotlinTimeInstantClassName FromEpochSeconds (long epochSeconds, int nanosecondAdjustment);
+
+                    [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment_:")]
+                    $kotlinTimeInstantClassName FromEpochSeconds (long epochSeconds, long nanosecondAdjustment);
+
+                    [Export ("DISTANT_FUTURE")]
+                    $kotlinTimeInstantClassName DISTANT_FUTURE { get; }
+
+                    [Export ("DISTANT_PAST")]
+                    $kotlinTimeInstantClassName DISTANT_PAST { get; }
+                    """.trimIndent(),
+            ),
+        )
+        // kotlin.time.Clock (stdlib protocol, K/N ObjC name: SharedKotlinClock).
+        // The singleton Clock.System is exposed by K/N as `id<SharedKotlinClock>` — an object
+        // conforming to the protocol with NO backing/registered ObjC class. A plain
+        // `GetNSObject<SharedKotlinClock>` throws InvalidCastException at runtime because the
+        // native object's real ObjC class is not registered to the (synthetic-named) model class.
+        //
+        // Fix: declare Clock as `[BaseType, Protocol, Model]` so the concrete SharedKotlinClock
+        // model class exists, and annotate every direct-Clock return value and parameter with
+        // `[ForcedType]` (see renderBindingParameterList and the function/return emission).
+        // ForcedType makes the runtime instantiate the binding type around the native handle
+        // WITHOUT a class-registry match — which is exactly what an unbound protocol conformer
+        // needs. (`[Protocolize]` is a no-op in modern .NET-for-iOS bgen and does not help.)
+        // LIMITATION: a Clock delivered *through a block parameter* (e.g. `(Clock) -> Unit`) is
+        // not force-typed — the block type emission has no place to attach [ForcedType] to its
+        // generic argument — so such an inbound Clock would still throw InvalidCastException.
+        // No binding exercises that today; revisit the block emission if one ever does.
+        val kotlinTimeClockClassName = "${csharpIOSBindingPrefix}KotlinClock"
+        addDeclaration(
+            InterfaceDeclarationSpec(
+                attributes = listOf("BaseType (typeof($kotlinBaseClassName))", "Protocol", "Model"),
+                identifier = kotlinTimeClockClassName,
+                interfaceTypeList = emptyList(),
+                rawBody =
+                    """
+                    [Export ("now")]
+                    $kotlinTimeInstantClassName Now ();
+                    """.trimIndent(),
+            ),
+        )
         val kotlinLocalTimeClassName = "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalTime"
         val kotlinLocalTimeCompanionClassName = "${kotlinLocalTimeClassName}Companion"
         addDeclaration(
@@ -468,10 +729,38 @@ class MauiModuleGenerator(
                             val identifier =
                                 declaration.getCSharpObjectCNamespace() + declaration.getCSharpObjectCName()
 
+                            val (constructors, functions) =
+                                declaration
+                                    .getMauiFunctionsAndConstructors(wellKnownTypes)
+                                    .partition { it.isConstructor() }
+
+                            // bgen auto-emits a parameterless `new X()` (calling the plain ObjC
+                            // `init`) for any [BaseType] that lacks [DisableDefaultCtor]. That
+                            // default ctor must be suppressed in two cases:
+                            //   1. a @Throws constructor is present — K/N drops the plain `init`
+                            //      selector (only `initAndReturnError:` remains), so the default
+                            //      `new X()` is broken AND it would bypass the throwing ctor's
+                            //      validation. The no-arg `canThrow = false` ctor (if any) is exposed
+                            //      as a static `New()` factory instead. (SDK-104 behavior.)
+                            //   2. every exposed constructor takes required parameters (e.g. a data
+                            //      class `Test(name, list, …)`) — K/N has no no-arg `init`, so
+                            //      `new SharedTest()` returns a half-initialized object whose non-null
+                            //      Kotlin fields are null at runtime.
+                            // Construction must then go through the real parameterized / factory /
+                            // throwing constructor. `object` singletons get a static factory, no ctor.
+                            val hasThrowingConstructor =
+                                constructors.any { it.hasThrowsAnnotation() }
+                            val hasUsableNoArgConstructor =
+                                constructors.any { it.parameters.isEmpty() && !it.hasThrowsAnnotation() }
+                            val disableDefaultCtor =
+                                !isObject &&
+                                    constructors.isNotEmpty() &&
+                                    (hasThrowingConstructor || !hasUsableNoArgConstructor)
+
                             addDeclaration(
                                 InterfaceDeclarationSpec(
                                     attributes =
-                                        listOf(
+                                        listOfNotNull(
                                             "BaseType (typeof(${
                                                 buildString {
                                                     superClass
@@ -480,17 +769,12 @@ class MauiModuleGenerator(
                                                         .writeTo(this)
                                                 }
                                             }))",
+                                            "DisableDefaultCtor".takeIf { disableDefaultCtor },
                                         ),
                                     identifier = identifier,
                                     interfaceTypeList = listOf(INativeObjectClassName),
                                     rawBody =
                                         buildString {
-                                            val (constructors, functions) =
-                                                declaration
-                                                    .getMauiFunctionsAndConstructors(
-                                                        wellKnownTypes,
-                                                    ).partition { it.isConstructor() }
-
                                             if (isObject && !declaration.isCompanionObject) {
                                                 val attributes =
                                                     listOf(
@@ -502,7 +786,8 @@ class MauiModuleGenerator(
                                             } else {
                                                 constructors.forEach { constructor ->
                                                     val isPrimary = constructor == declaration.primaryConstructor
-                                                    if (constructor.parameters.isEmpty()) {
+                                                    val throwing = constructor.hasThrowsAnnotation()
+                                                    if (constructor.parameters.isEmpty() && !throwing) {
                                                         val attributes =
                                                             listOf("Static", "Export (\"new\")") +
                                                                 if (isPrimary) {
@@ -513,8 +798,19 @@ class MauiModuleGenerator(
                                                         append("    ${attributes.cSharpAttributesToString()}\n")
                                                         append("    $identifier New ();\n")
                                                     } else {
+                                                        // A @Throws constructor is exported by K/N with the NSError
+                                                        // out-param: `init`/`initWith…:` becomes
+                                                        // `initAndReturnError:`/`initWith…:error:`. The `+new` convention
+                                                        // (alloc + plain init) has no plain init to delegate to, so a
+                                                        // throwing no-arg ctor must also be emitted as a `Constructor`.
+                                                        val exportName =
+                                                            if (throwing) {
+                                                                getThrowingObjectCExportName(constructor)
+                                                            } else {
+                                                                getObjectCExportName(constructor)
+                                                            }
                                                         val attributes =
-                                                            listOf("Export (\"${getObjectCExportName(constructor)}\")") +
+                                                            listOf("Export (\"$exportName\")") +
                                                                 if (isPrimary) {
                                                                     listOf("DesignatedInitializer")
                                                                 } else {
@@ -524,23 +820,7 @@ class MauiModuleGenerator(
                                                         append("    ")
                                                         NativeHandleClassName.writeTo(this)
                                                         append(" Constructor (")
-                                                        constructor.parameters.joinTo(
-                                                            this,
-                                                            separator = ", ",
-                                                        ) {
-                                                            buildString {
-                                                                val type = it.type.resolve()
-                                                                val typeName =
-                                                                    type.getCSharpObjectCTypeName(
-                                                                        isBindingParameterOrReturnType = true,
-                                                                    )
-                                                                typeName.writeAttributesTo(this)
-                                                                typeName.writeTo(this)
-
-                                                                append(" ")
-                                                                append(it.name!!.toCSharpMemberName())
-                                                            }
-                                                        }
+                                                        append(renderBindingParameterList(constructor, throwing))
                                                         append(");\n")
                                                     }
                                                     append("\n")
@@ -551,30 +831,30 @@ class MauiModuleGenerator(
                                                 val returnType = function.returnType!!.resolve()
                                                 val returnTypeName =
                                                     returnType.getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
+                                                // A function annotated @Throws is exported by K/N with an NSError
+                                                // out-param appended to the selector (and Unit-returning ones become
+                                                // BOOL). Mirror that here only for annotated functions so the binding
+                                                // matches the actual ObjC selector; non-annotated stay as before.
+                                                val throwing = function.hasThrowsAnnotation()
+                                                val isUnit = returnType.declaration.qualifiedName?.asString() == "kotlin.Unit"
+                                                val exportName =
+                                                    if (throwing) getThrowingObjectCExportName(function) else getObjectCExportName(function)
+                                                // kotlin.time.Clock is an unbound ObjC protocol conformer; force the
+                                                // runtime to wrap the returned native handle into the model class
+                                                // without a class-registry match (see Clock declaration above).
+                                                val isForcedReturnType =
+                                                    returnType.declaration.qualifiedName?.asString() == "kotlin.time.Clock"
                                                 val attributes =
-                                                    listOf("Export (\"${getObjectCExportName(function)}\")") +
-                                                        returnTypeName.attributes
+                                                    listOf("Export (\"$exportName\")") +
+                                                        if (throwing && isUnit) emptyList() else returnTypeName.attributes
                                                 append("    ${attributes.cSharpAttributesToString()}\n")
+                                                if (isForcedReturnType) append("    [return: ForcedType]\n")
                                                 append("    ")
-                                                returnTypeName.writeTo(this)
+                                                if (throwing && isUnit) append("bool") else returnTypeName.writeTo(this)
                                                 append(" ")
                                                 append(function.getCSharpObjectCName())
                                                 append("(")
-                                                function.parameters.joinTo(
-                                                    this,
-                                                    separator = ", ",
-                                                ) {
-                                                    buildString {
-                                                        val type = it.type.resolve()
-                                                        val typeName =
-                                                            type.getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
-                                                        typeName.writeAttributesTo(this)
-                                                        typeName.writeTo(this)
-
-                                                        append(" ")
-                                                        append(it.name!!.toCSharpMemberName())
-                                                    }
-                                                }
+                                                append(renderBindingParameterList(function, throwing))
                                                 append(");\n")
                                                 append("\n")
                                             }
@@ -839,6 +1119,126 @@ class MauiModuleGenerator(
         return functionName + params
     }
 
+    // --- @Throws / NSError support  ---
+    // A sync Kotlin function that throws kills the process unless it is @Throws-annotated: only
+    // then does Kotlin/Native bridge the Exception to an ObjC `NSError` out-param (catchable in C#).
+    // K/N also rewrites the selector for those functions, so the three helpers below mirror exactly
+    // what K/N emits — otherwise the C# binding wouldn't link to the framework. The matching
+    // idiomatic C# wrappers (hiding the out-param) are emitted separately by CSharpThrowsWrapperGenerator.
+
+    /**
+     * Expands type aliases to their underlying type. K/N resolves the underlying function type when
+     * deciding block-param position, so `typealias OnResult = (String)->Unit` must still be
+     * recognised as a function type. Also used in Names.typeName for the same reason.
+     */
+    private fun KSType.expandTypeAliases(): KSType {
+        var resolved = this
+        while (resolved.declaration is KSTypeAlias) {
+            resolved = (resolved.declaration as KSTypeAlias).type.resolve()
+        }
+        return resolved
+    }
+
+    /**
+     * The position of the `NSError` out-parameter in a `@Throws`-annotated function/constructor.
+     * Kotlin/Native inserts it immediately before the first function-type (block/closure) parameter
+     * — mirroring ObjC's trailing-closure convention — or appends it at the end when there is none.
+     * Type aliases are expanded so `typealias OnResult = (String)->Unit` is treated as a block.
+     */
+    private fun errorParameterIndex(function: KSFunctionDeclaration): Int {
+        val index =
+            function.parameters.indexOfFirst {
+                val type = it.type.resolve().expandTypeAliases()
+                type.isFunctionType || type.isSuspendFunctionType
+            }
+        return if (index >= 0) index else function.parameters.size
+    }
+
+    /**
+     * Renders the C# binding parameter list for a function/constructor. When [throwing], the
+     * `out NSError error` parameter is inserted at [errorParameterIndex] so the C# parameter order
+     * matches the ObjC selector Kotlin/Native produces (see [getThrowingObjectCExportName]).
+     */
+    private fun renderBindingParameterList(
+        function: KSFunctionDeclaration,
+        throwing: Boolean,
+    ): String {
+        val rendered =
+            function.parameters
+                .map { parameter ->
+                    buildString {
+                        val resolvedType = parameter.type.resolve()
+                        // kotlin.time.Clock is an unbound ObjC protocol conformer (see its
+                        // declaration above): force the runtime to wrap an inbound native handle
+                        // into the model class without a class-registry match. Inert for the
+                        // outbound (C# -> native) direction, required if a Clock is ever passed in.
+                        if (resolvedType.declaration.qualifiedName?.asString() == "kotlin.time.Clock") {
+                            append("[ForcedType] ")
+                        }
+                        val typeName =
+                            resolvedType.getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
+                        typeName.writeAttributesTo(this)
+                        typeName.writeTo(this)
+                        append(" ")
+                        append(parameter.name!!.toCSharpMemberName())
+                    }
+                }.toMutableList()
+        if (throwing) {
+            rendered.add(errorParameterIndex(function), "out NSError error")
+        }
+        return rendered.joinToString(", ")
+    }
+
+    /**
+     * The ObjC selector Kotlin/Native produces for a function/constructor annotated with `@Throws`.
+     * The error out-parameter is placed at [errorParameterIndex]; when it is the first argument the
+     * keyword is `AndReturnError` (fused onto the base name), otherwise a plain `error:` segment.
+     *
+     *   throwError()                        -> throwErrorAndReturnError:
+     *   nullableRoundtrip(value)            -> nullableRoundtripValue:error:
+     *   withCallback(onResult: block)       -> withCallbackAndReturnError:onResult:
+     *   withParameterizedCallback(t, block) -> withParameterizedCallbackT:error:onEach:
+     *   init()                              -> initAndReturnError:
+     *   init(test)                          -> initWithTest:error:
+     */
+    private fun getThrowingObjectCExportName(function: KSFunctionDeclaration): String {
+        val params = function.parameters
+        val errorPos = errorParameterIndex(function)
+        val baseName =
+            if (function.isConstructor()) {
+                // "initWith" only when the first selector segment is a real parameter. When the error
+                // is first (errorPos == 0 — e.g. a ctor whose first param is a block), K/N emits
+                // "init" + "AndReturnError", not "initWith" (there is no parameter name to "With" to).
+                if (params.isEmpty() || errorPos == 0) "init" else "initWith"
+            } else {
+                function.getObjectCName()
+            }
+
+        // argument labels in order, with the error argument inserted at errorPos
+        val labels = mutableListOf<String?>() // null marks the error argument
+        params.forEachIndexed { index, parameter ->
+            if (index == errorPos) labels.add(null)
+            labels.add(parameter.name!!.getShortName())
+        }
+        if (errorPos >= params.size) labels.add(null)
+
+        return buildString {
+            labels.forEachIndexed { index, label ->
+                if (index == 0) {
+                    append(baseName)
+                    if (label == null) {
+                        append("AndReturnError")
+                    } else {
+                        append(label.replaceFirstChar { it.uppercaseChar() })
+                    }
+                } else {
+                    append(label ?: "error")
+                }
+                append(":")
+            }
+        }
+    }
+
     private fun KSDeclaration.getObjectCName(): String {
         val name = simpleName.asString()
         val lowercaseName = name.lowercase()
@@ -964,7 +1364,7 @@ class MauiModuleGenerator(
                     "kotlinx.datetime.LocalDate" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDate"
                     "kotlinx.datetime.LocalTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalTime"
                     "kotlinx.datetime.Instant" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
-                    "kotlin.time.Instant" -> "${csharpIOSBindingPrefix}Kotlin_timeInstant"
+                    "kotlin.time.Instant" -> "${csharpIOSBindingPrefix}KotlinInstant"
                     else -> null
                 }?.let {
                     CSharp.ClassName(
@@ -972,6 +1372,13 @@ class MauiModuleGenerator(
                         namespace = csharpIOSBindingNamespace,
                         isNullable = type.isMarkedNullable,
                     )
+                } ?: when (type.declaration.qualifiedName?.asString()) {
+                    "kotlin.time.Clock" -> CSharp.ClassName(
+                        simpleName = "${csharpIOSBindingPrefix}KotlinClock",
+                        namespace = csharpIOSBindingNamespace,
+                        isNullable = type.isMarkedNullable,
+                    )
+                    else -> null
                 } ?: when {
                     type.declaration.packageName
                         .asString()

@@ -11,6 +11,7 @@ import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeAlias
 import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Origin
@@ -71,6 +72,20 @@ internal fun KSDeclaration.isAnnotatedWithMauiBinding(wellKnownTypes: MauiModule
 internal fun KSDeclaration.isAnnotatedWithMauiBindingIgnore(wellKnownTypes: MauiModuleGenerator.WellKnownTypes) =
     annotations.any { it.annotationType.resolve() == wellKnownTypes.mauiBindingIgnoreAnnotationType }
 
+/**
+ * The `canThrow` value declared on this member's `@MauiBinding` annotation, defaulting to `true`
+ * when the argument is omitted or the member is not annotated. `canThrow = false` is the author's
+ * assertion that the member never throws, exempting it from the synchronous `@Throws` requirement.
+ */
+internal fun KSDeclaration.mauiBindingCanThrow(wellKnownTypes: MauiModuleGenerator.WellKnownTypes): Boolean {
+    val annotation =
+        annotations.firstOrNull {
+            it.annotationType.resolve() == wellKnownTypes.mauiBindingAnnotationType
+        } ?: return true
+    val value = annotation.arguments.firstOrNull { it.name?.asString() == "canThrow" }?.value
+    return value as? Boolean ?: true
+}
+
 internal fun KSClassDeclaration.getMauiFunctionsAndConstructors(
     wellKnownTypes: MauiModuleGenerator.WellKnownTypes,
 ): Sequence<KSFunctionDeclaration> {
@@ -95,6 +110,45 @@ internal fun KSClassDeclaration.getMauiProperties(wellKnownTypes: MauiModuleGene
             ) &&
             !it.isAnnotatedWithMauiBindingIgnore(wellKnownTypes)
     }
+}
+
+/**
+ * Whether a `@MauiBinding` function/constructor is annotated with `kotlin.Throws`. Kotlin/Native
+ * only bridges thrown exceptions to ObjC `NSError` (catchable in C#) for `@Throws`-annotated
+ * functions; the C# binding must mirror the resulting `…error:` selector for exactly those.
+ */
+internal fun KSFunctionDeclaration.hasThrowsAnnotation(): Boolean =
+    annotations.any { annotation ->
+        annotation.shortName.asString() == "Throws" &&
+            annotation.annotationType
+                .resolve()
+                .declaration.qualifiedName
+                ?.asString() == "kotlin.Throws"
+    }
+
+/**
+ * The fully-qualified names of the exception classes listed in this function's `kotlin.Throws`
+ * annotation, or `null` if it is not annotated. An empty list means `@Throws()` with no classes
+ * (which does not make Kotlin/Native bridge anything).
+ */
+internal fun KSFunctionDeclaration.throwsExceptionClassNames(): List<String>? {
+    val annotation =
+        annotations.firstOrNull { annotation ->
+            annotation.shortName.asString() == "Throws" &&
+                annotation.annotationType
+                    .resolve()
+                    .declaration.qualifiedName
+                    ?.asString() == "kotlin.Throws"
+        } ?: return null
+
+    val value = annotation.arguments.firstOrNull()?.value
+    val types =
+        when (value) {
+            is List<*> -> value.filterIsInstance<KSType>()
+            is KSType -> listOf(value)
+            else -> emptyList()
+        }
+    return types.mapNotNull { it.declaration.qualifiedName?.asString() }
 }
 
 internal fun KSDeclaration.resolveTypeAliases(): KSDeclaration =

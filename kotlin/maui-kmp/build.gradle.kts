@@ -23,9 +23,6 @@ kotlin {
 
     jvm()
     androidTarget {
-        compilations.all {
-            kotlinOptions.jvmTarget = "1.8"
-        }
         publishLibraryVariants("release")
     }
 
@@ -50,13 +47,6 @@ kotlin {
         all {
             languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
-        }
-    }
-    targets.all {
-        compilations.all {
-            kotlinOptions {
-                freeCompilerArgs += listOf("-Xexpect-actual-classes")
-            }
         }
     }
 }
