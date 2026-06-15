@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.google.devtools.ksp.gradle.KspAATask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -12,6 +13,11 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// The framework baseName determines the ObjC class-name prefix Kotlin/Native uses (baseName
+// "shared" → prefix "Shared"), and must match the `maui.kmp.csharp.ios.frameworkPrefix` KSP arg
+// below. Change both together if you need a different prefix.
+val frameworkName = "shared"
+
 kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -19,15 +25,23 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
+    val xcf = XCFramework(frameworkName)
     listOf(
         iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+            baseName = frameworkName
+            // Dynamic (not static): when consuming the XCFramework directly via NativeReference
+            // (without an intermediate Xcode wrapper project), a static .a gets dead-stripped by
+            // the linker because the ObjC methods are only invoked at runtime via objc_msgSend —
+            // the linker sees no static references and removes them. A dynamic framework preserves
+            // all symbols. (Adding -ObjC would keep them but also force-loads the bundled
+            // Compose/skiko objects, which fails to link.)
+            isStatic = false
+            xcf.add(this)
         }
     }
     
@@ -46,6 +60,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
 
@@ -79,9 +94,10 @@ android {
 }
 
 ksp {
-    // Configure C# binding generation (required)
+    // frameworkPrefix must be the ObjC class prefix produced by Kotlin/Native, which is
+    // frameworkName.replaceFirstChar { it.uppercaseChar() } — i.e. "shared" → "Shared".
     arg("maui.kmp.csharp.ios.namespace", "Voize")
-    arg("maui.kmp.csharp.ios.frameworkPrefix", "Shared")
+    arg("maui.kmp.csharp.ios.frameworkPrefix", frameworkName.replaceFirstChar { it.uppercaseChar() })
     
     // To use custom values, uncomment and modify:
     // arg("maui.kmp.csharp.ios.namespace", "MyCompany.Mobile")
@@ -118,5 +134,38 @@ tasks.withType<KotlinCompilationTask<*>>().configureEach {
 tasks.register<Copy>("copyGeneratedMauiIosFiles") {
     dependsOn("kspKotlinIosArm64")
     from("build/generated/ksp/iosArm64/iosArm64Main/resources/maui-kmp")
-    into("../../maui/generated")
+    into("../../maui/binding/generated")
+}
+
+/**
+ * Builds the debug XCFramework (device + simulator slices) and copies it next to the iOS binding
+ * project so its `<NativeReference>` can resolve `$frameworkName.xcframework`. Run this before
+ * building the MAUI app. The assemble task is auto-created by the `XCFramework(frameworkName)` DSL.
+ */
+tasks.register<Copy>("copyXCFrameworkToBinding") {
+    dependsOn("assemble${frameworkName.replaceFirstChar { it.uppercaseChar() }}DebugXCFramework")
+    from("build/XCFrameworks/debug")
+    into("../../maui/binding")
+}
+
+/**
+ * Compiles the iOS binding project and packs it as a NuGet package.
+ *
+ * Output goes to the default MSBuild location: `example/maui/binding/bin/Release/`.
+ * The app project consumes the package via `<PackageReference>` using `example/maui/nuget.config`
+ * (which lists `binding/bin/Release` as a local feed).
+ *
+ * After running this task, delete `~/.nuget/packages/mauikmpexample.ios/` to force NuGet to
+ * re-extract the fresh package on the next restore (version is fixed at 0.1.0).
+ * The `just pack` recipe does this automatically.
+ */
+tasks.register("packIosBinding") {
+    dependsOn("copyXCFrameworkToBinding", "copyGeneratedMauiIosFiles")
+    description = "Compiles the iOS binding and packs it as a NuGet package (output: binding/bin/Release/)."
+    doLast {
+        exec {
+            workingDir(project.file("../../maui/binding"))
+            commandLine("dotnet", "pack", "-p:FrameworkType=Debug", "-c", "Release")
+        }
+    }
 }
