@@ -964,6 +964,7 @@ class MauiModuleGenerator(
                     "kotlinx.datetime.LocalDate" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDate"
                     "kotlinx.datetime.LocalTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalTime"
                     "kotlinx.datetime.Instant" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
+                    "kotlin.time.Instant" -> "${csharpIOSBindingPrefix}Kotlin_timeInstant"
                     else -> null
                 }?.let {
                     CSharp.ClassName(
