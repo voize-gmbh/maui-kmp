@@ -1,7 +1,37 @@
 # CHANGELOG
 
 ## unreleased
+## v0.4.0
+
+- Updated to Kotlin 2.3.20 and KSP 2.3.6
+- Sync error propagation: a `@Throws(Exception::class)` `@MauiBinding` function/constructor
+  now bridges thrown `Exception`s to an `NSError` (catchable in C#) instead of terminating the process
+- Generate `<throwsWrapperClassName>.cs` with idiomatic wrappers: methods hide the `out NSError` and
+  throw `NSErrorException`; throwing constructors get `CreateX(...)` factories
+- Build now fails if a synchronous `@MauiBinding` (non-adapter) lacks `@Throws` — opt out globally
+  with `maui.kmp.ios.requireThrowsOnSyncBindings=false`, or per-member with `@MauiBinding(canThrow = false)`
+  (asserts the member never throws; keeps the plain `new SharedX()` path, no factory/`[DisableDefaultCtor]`)
+- `[DisableDefaultCtor]` is now emitted for any class whose exposed constructors all require
+  parameters (e.g. data classes), not just `@Throws` constructors — bgen no longer emits a broken
+  parameterless `new SharedX()` that called a non-existent plain `init` and returned a
+  half-initialized object
+- Map `kotlin.time.Instant` to `${prefix}KotlinInstant` (distinct from `kotlinx.datetime.Instant`),
+  with its `Companion` factories (`fromEpochMilliseconds`/`fromEpochSeconds`) and `DISTANT_*`
+- Support `kotlin.time.Clock`: bound as a `[Protocol, Model]` with `[ForcedType]` on direct Clock
+  return values and parameters, so the unbound `Clock.System` protocol conformer resolves instead of
+  throwing `InvalidCastException`
+- New KSP options: `maui.kmp.ios.asyncAdapterTypes`, `maui.kmp.ios.requireThrowsOnSyncBindings`,
+  `maui.kmp.ios.emitDeprecatedConstructorShims`, `maui.kmp.ios.throwsWrapperClassName`
+- Async adapter errors are delivered per-subscription via `onError`; cross-cutting observability is
+  left to the host (the example broadcasts them through an `ErrorBus` publisher in `Extra.cs`)
+- **BREAKING (iOS):** all sync selectors change; `new SharedX()` is removed for `@Throws`
+  constructors and for any class whose constructors all require parameters — consumers must
+  regenerate the binding and migrate construction (see README)
+
 ## v0.3.1
+
+- Added instant from kotlin
+
 ## v0.3.0
 
 - Add dependencyConfiguration to mauiKmp plugin configuration

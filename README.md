@@ -9,6 +9,7 @@ Currently the following features are supported:
 - Generate android csproj file android binding project
 - Generate android fat aar via gradle plugin
 - **Configurable namespace and prefix for C# binding generation**
+- **Synchronous error propagation via `@Throws` → `NSError` (catchable in C#), with generated wrappers** (see below)
 
 ## Configuration
 
@@ -45,6 +46,115 @@ namespace MyCompany.Mobile
     }
 }
 ```
+
+## Synchronous error handling (`@Throws`)
+
+On iOS, a synchronous Kotlin function that throws crosses the Kotlin/Native → ObjC boundary as an
+*unhandled* exception and **terminates the process** — the C# host cannot catch it. Kotlin/Native
+only bridges a thrown `Exception` to an ObjC `NSError` (which surfaces in C#) when the function is
+annotated `@Throws`. This toolkit makes that the contract:
+
+- Annotate every synchronous `@MauiBinding` function/constructor with `@Throws(Exception::class)`.
+  `Exception` becomes catchable in C#; `kotlin.Error` stays fatal (by design); `CancellationException`
+  is always rethrown, never bridged.
+- If a synchronous member genuinely never throws, annotate it `@MauiBinding(canThrow = false)` instead
+  of adding `@Throws`. KSP then stops requiring `@Throws` for it and skips all throwing machinery
+  (no wrapper, no `CreateX` factory, no `[DisableDefaultCtor]`) — the plain `new SharedX(...)` keeps
+  working. This is an assertion, not a guard: if such a member does throw at runtime it terminates the
+  process uncatchably. Combining `canThrow = false` with `@Throws` is a build error.
+```kotlin
+    // Function from DemoSdk
+
+    @MauiBinding // The MauiBinding annotation
+    @Throws(Exception::class)  // Add this, so that Kotlin Native generates the ObjC header exposing the Exception
+    fun start() {
+        // some logic which can throw an Exception
+    }
+```
+
+
+- For each `@Throws` member the KSP emits, in a separate generated file, an idiomatic C# wrapper that
+  hides the `out NSError` and throws `NSErrorException` instead — so call sites keep their natural shape.
+
+```csharp ApiDefinitions.cs
+
+    [Export ("startAndReturnError:")] // how the kotlin native generates the method for consumption
+    bool Start(out NSError error);  // it exposes an error and for unit methods returns a bool
+
+```
+
+```csharp ThrowWrappers.cs
+    // Wraps the Start method, so it is now possible to use it as usual: Start()
+    public static void Start(this SharedDemoSdk self)
+    {
+        self.Start(out var error);
+        if (error != null)
+        {
+            throw new NSErrorException(error);  // Throws the exception, so this can be catched inside csharp
+        }
+    }
+
+```
+
+
+### KSP options
+
+```kotlin
+ksp {
+    // Fail the build if a synchronous @MauiBinding (that is not an async adapter) lacks @Throws.
+    // Default: true. This is what closes the "host can't catch a crash" gap.
+    arg("maui.kmp.ios.requireThrowsOnSyncBindings", "true")
+
+    // Comma-separated FQNs of your async adapter types (Task/ObservableFlow-style). They are exempt
+    // from the check above — both as classes and as function return types — because they marshal
+    // errors through callbacks instead of throwing.
+    arg("maui.kmp.ios.asyncAdapterTypes",
+        "your.pkg.Task,your.pkg.CompletableTask,your.pkg.ObservableFlow,your.pkg.ObservableBooleanFlow")
+
+    // Name of the generated static class holding the wrappers + CreateX factories.
+    // Default: "MauiKmpThrowsWrappers".
+    arg("maui.kmp.ios.throwsWrapperClassName", "VoizeSdk")
+
+    // Emit deprecated `new SharedX(...)` compatibility shims for @Throws constructors so existing
+    // call sites keep compiling (with an [Obsolete] warning) during a migration. Default: false.
+    arg("maui.kmp.ios.emitDeprecatedConstructorShims", "false")
+}
+```
+
+### What changes for the binding author (Kotlin side)
+
+- Every sync `@MauiBinding` function/constructor needs `@Throws(Exception::class)` or the build fails
+  (unless you opt out globally). Functions returning a declared async-adapter type are exempt.
+- Per-member opt-out: `@MauiBinding(canThrow = false)` exempts a member that never throws (e.g. a
+  trivial constructor) without disabling the check everywhere. Preferred over the global flag.
+- Property getters and `object`/companion lazy init are **not** covered — a getter that throws on iOS
+  still terminates the process (out of scope for now).
+- For construction you have two patterns:
+  - **`@Throws` constructor** → consumers get a `CreateX(...)` factory (and optionally the deprecated
+    `new X(...)` shim).
+  - **`internal` constructor + a `@Throws` companion factory** (`getInstance()` / `init()` / `create()`)
+    → consumers call `SharedX.Companion.Create()` — no `new`, no wrapper prefix, and none of the
+    factory/shim/`[DisableDefaultCtor]` machinery is involved.
+
+### What changes for the binding consumer (the MAUI host)
+
+- **Methods: no source change.** `obj.Foo(...)` keeps compiling — it now resolves to the generated
+  extension wrapper, which throws a catchable `NSErrorException` instead of crashing. Wrap in `try/catch`
+  where you want to handle it.
+- **Constructors of `@Throws` types: breaking.** The plain `new SharedX()` is removed (the interface
+  gets `[DisableDefaultCtor]`, because the bgen default ctor would otherwise call the now-absent plain
+  `init` and build a half-initialized object). Use `<throwsWrapperClassName>.CreateSharedX(...)`, or
+  enable `emitDeprecatedConstructorShims` for a grace period (compiles with an `[Obsolete]` warning;
+  it runs the real ctor but cannot surface the error — migrate to the factory).
+- **All iOS selectors of `@Throws` members change**, so the whole binding must be regenerated in one
+  step when bumping the plugin version.
+
+Async errors (from the `Task`/`ObservableFlow` adapters) are delivered per-subscription through the
+`onError` callback. For cross-cutting observability, the host can additionally broadcast them through a
+publisher on the C# side — the example wires an `ErrorBus` (`IObservable<AdapterError>`, the C#
+equivalent of a `SharedFlow`) that the adapters publish to in `Extra.cs`, so any number of subscribers
+see every async `Exception` (`Error`/`CancellationException` are never published). This is consumer
+code, not part of the toolkit — see `example/maui/binding/Extra.cs`.
 
 ## Example app
 

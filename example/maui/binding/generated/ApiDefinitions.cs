@@ -2,6 +2,7 @@ using Foundation;
 namespace Voize
 {
   using TestTypeAlias = Voize.SharedTest;
+  using OnStringResult = System.Action<Foundation.NSString>;
   [BaseType(typeof(NSObject))]
   interface SharedBase : ObjCRuntime.INativeObject
   {
@@ -91,6 +92,40 @@ SharedKotlinx_datetimeInstant DISTANT_FUTURE { get; }
 SharedKotlinx_datetimeInstant DISTANT_PAST { get; }
   }
   [BaseType (typeof(SharedBase))]
+  interface SharedKotlinInstant : Voize.SharedBase
+  {
+  [Export ("toEpochMilliseconds")]
+long ToEpochMilliseconds ();
+
+[Static]
+[Export ("companion")]
+SharedKotlinInstantCompanion Companion { [Bind ("companion")] get; }
+  }
+  [BaseType (typeof(SharedBase))]
+  interface SharedKotlinInstantCompanion
+  {
+  [Export ("fromEpochMillisecondsEpochMilliseconds:")]
+SharedKotlinInstant FromEpochMilliseconds (long epochMilliseconds);
+
+[Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment:")]
+SharedKotlinInstant FromEpochSeconds (long epochSeconds, int nanosecondAdjustment);
+
+[Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment_:")]
+SharedKotlinInstant FromEpochSeconds (long epochSeconds, long nanosecondAdjustment);
+
+[Export ("DISTANT_FUTURE")]
+SharedKotlinInstant DISTANT_FUTURE { get; }
+
+[Export ("DISTANT_PAST")]
+SharedKotlinInstant DISTANT_PAST { get; }
+  }
+  [BaseType (typeof(SharedBase)), Protocol, Model]
+  interface SharedKotlinClock
+  {
+  [Export ("now")]
+SharedKotlinInstant Now ();
+  }
+  [BaseType (typeof(SharedBase))]
   interface SharedKotlinx_datetimeLocalTime : Voize.SharedBase
   {
   [Export ("initWithHour:minute:second:nanosecond:")]
@@ -138,50 +173,69 @@ SharedKotlinx_datetimeLocalDate Date { get; }
 [Export ("time")]
 SharedKotlinx_datetimeLocalTime Time { get; }
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedE2ETest : ObjCRuntime.INativeObject
   {
-      [Export ("initWithTest:")]
-    ObjCRuntime.NativeHandle Constructor (Voize.SharedTest test);
+      [Export ("initWithTest:error:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (Voize.SharedTest test, out NSError error);
 
-    [Export ("testDefaultTypesString:int:long:float:double:boolean:byte:char:short:")]
-    string TestDefaultTypes(string @string, int @int, long @long, float @float, double @double, bool boolean, byte @byte, char @char, short @short);
+    [Export ("testDefaultTypesString:int:long:float:double:boolean:byte:char:short:error:")]
+    string TestDefaultTypes(string @string, int @int, long @long, float @float, double @double, bool boolean, byte @byte, char @char, short @short, out NSError error);
 
-    [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:short:"), NullAllowed]
-    string TestDefaultTypesNullable([NullAllowed] string @string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber @int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber @long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber @float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber @double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber @byte, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber @short);
+    [Export ("testDefaultTypesNullableString:int:long:float:double:boolean:byte:short:error:"), NullAllowed]
+    string TestDefaultTypesNullable([NullAllowed] string @string, [ObjCRuntime.BindAs (typeof (int?)), NullAllowed] Foundation.NSNumber @int, [ObjCRuntime.BindAs (typeof (long?)), NullAllowed] Foundation.NSNumber @long, [ObjCRuntime.BindAs (typeof (float?)), NullAllowed] Foundation.NSNumber @float, [ObjCRuntime.BindAs (typeof (double?)), NullAllowed] Foundation.NSNumber @double, [ObjCRuntime.BindAs (typeof (bool?)), NullAllowed] Foundation.NSNumber boolean, [ObjCRuntime.BindAs (typeof (byte?)), NullAllowed] Foundation.NSNumber @byte, [ObjCRuntime.BindAs (typeof (short?)), NullAllowed] Foundation.NSNumber @short, out NSError error);
 
-    [Export ("testListAndMapList:map:nestedList:nestedMap:nestedListInMap:nestedMapInList:complexList:complexMap:")]
-    Foundation.NSNumber[] TestListAndMap(Foundation.NSString[] list, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, Foundation.NSArray<Foundation.NSString>[] nestedList, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSArray<Foundation.NSString>> nestedListInMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>[] nestedMapInList, Voize.SharedTest[] complexList, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap);
+    [Export ("testListAndMapList:map:nestedList:nestedMap:nestedListInMap:nestedMapInList:complexList:complexMap:error:")]
+    Foundation.NSNumber[] TestListAndMap(Foundation.NSString[] list, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, Foundation.NSArray<Foundation.NSString>[] nestedList, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSArray<Foundation.NSString>> nestedListInMap, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>[] nestedMapInList, Voize.SharedTest[] complexList, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap, out NSError error);
 
-    [Export ("testListAndMapNullableList:map:nestedList:nestedMap:complexList:complexMap:listNullable:mapNullable:nestedListNullable:nestedMapNullable:complexListNullable:complexMapNullable:")]
-    Foundation.NSNumber?[] TestListAndMapNullable([NullAllowed] Foundation.NSString[] list, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, [NullAllowed] Foundation.NSArray<Foundation.NSString>[] nestedList, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, [NullAllowed] Voize.SharedTest[] complexList, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap, Foundation.NSString?[] listNullable, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString?> mapNullable, Foundation.NSArray<Foundation.NSString?>?[] nestedListNullable, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString?>?> nestedMapNullable, Voize.SharedTest?[] complexListNullable, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest?> complexMapNullable);
+    [Export ("testListAndMapNullableList:map:nestedList:nestedMap:complexList:complexMap:listNullable:mapNullable:nestedListNullable:nestedMapNullable:complexListNullable:complexMapNullable:error:")]
+    Foundation.NSNumber?[] TestListAndMapNullable([NullAllowed] Foundation.NSString[] list, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Foundation.NSString> map, [NullAllowed] Foundation.NSArray<Foundation.NSString>[] nestedList, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString>> nestedMap, [NullAllowed] Voize.SharedTest[] complexList, [NullAllowed] Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest> complexMap, Foundation.NSString?[] listNullable, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString?> mapNullable, Foundation.NSArray<Foundation.NSString?>?[] nestedListNullable, Foundation.NSDictionary<Foundation.NSString, Foundation.NSDictionary<Foundation.NSString, Foundation.NSString?>?> nestedMapNullable, Voize.SharedTest?[] complexListNullable, Foundation.NSDictionary<Foundation.NSString, Voize.SharedTest?> complexMapNullable, out NSError error);
 
-    [Export ("exampleInput:testEnum:")]
-    Voize.SharedTest Example(Voize.SharedTestSealedType input, [NullAllowed] Voize.SharedEnum testEnum);
+    [Export ("exampleInput:testEnum:error:")]
+    Voize.SharedTest Example(Voize.SharedTestSealedType input, [NullAllowed] Voize.SharedEnum testEnum, out NSError error);
 
-    [Export ("testSealedClassPropertiesTest:")]
-    Voize.SharedTestSealedClassProperties TestSealedClassProperties(Voize.SharedTestSealedClassProperties test);
+    [Export ("testSealedClassPropertiesTest:error:")]
+    Voize.SharedTestSealedClassProperties TestSealedClassProperties(Voize.SharedTestSealedClassProperties test, out NSError error);
 
-    [Export ("testKotlinDateTimeDuration:durationOrNull:instant:localDateTime:test:instantOrNull:")]
-    long TestKotlinDateTime(long duration, [NullAllowed] Foundation.NSNumber durationOrNull, Voize.SharedKotlinx_datetimeInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, [NullAllowed] Voize.SharedKotlinx_datetimeInstant instantOrNull);
+    [Export ("testKotlinDateTimeDuration:durationOrNull:instant:localDateTime:test:instantOrNull:error:")]
+    long TestKotlinDateTime(long duration, [NullAllowed] Foundation.NSNumber durationOrNull, Voize.SharedKotlinx_datetimeInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, [NullAllowed] Voize.SharedKotlinx_datetimeInstant instantOrNull, out NSError error);
 
-    [Export ("testKotlinDateTimeListDuration:instant:localDateTime:test:instantOrNull:")]
-    Foundation.NSNumber[] TestKotlinDateTimeList(Foundation.NSNumber[] duration, Voize.SharedKotlinx_datetimeInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinx_datetimeInstant?[] instantOrNull);
+    [Export ("testKotlinDateTimeListDuration:instant:localDateTime:test:instantOrNull:error:")]
+    Foundation.NSNumber[] TestKotlinDateTimeList(Foundation.NSNumber[] duration, Voize.SharedKotlinx_datetimeInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinx_datetimeInstant?[] instantOrNull, out NSError error);
 
-    [Export ("getDateTimeTest")]
-    Voize.SharedDateTimeTest GetDateTimeTest();
+    [Export ("getDateTimeTestAndReturnError:")]
+    Voize.SharedDateTimeTest GetDateTimeTest(out NSError error);
 
-    [Export ("testTypeAliasTest:")]
-    TestTypeAlias TestTypeAlias(TestTypeAlias test);
+    [Export ("testTypeAliasTest:error:")]
+    TestTypeAlias TestTypeAlias(TestTypeAlias test, out NSError error);
 
-    [Export ("testSealedSubtypeTest:")]
-    Voize.SharedTestSealedTypeOption1 TestSealedSubtype(Voize.SharedTestSealedTypeOption1 test);
+    [Export ("testSealedSubtypeTest:error:")]
+    Voize.SharedTestSealedTypeOption1 TestSealedSubtype(Voize.SharedTestSealedTypeOption1 test, out NSError error);
 
-    [Export ("testSealedCustomDiscriminatorTest:")]
-    void TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test);
+    [Export ("testSealedCustomDiscriminatorTest:error:")]
+    bool TestSealedCustomDiscriminator(Voize.SharedTestSealedTypeWithCustomDiscriminator test, out NSError error);
 
-    [Export ("testMapWithEnumKeyMap:")]
-    Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> TestMapWithEnumKey(Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> map);
+    [Export ("testMapWithEnumKeyMap:error:")]
+    Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> TestMapWithEnumKey(Foundation.NSDictionary<Voize.SharedEnum, Foundation.NSString> map, out NSError error);
+
+    [Export ("testKotlinTimeInstantInstant:error:")]
+    Voize.SharedKotlinInstant TestKotlinTimeInstant(Voize.SharedKotlinInstant instant, out NSError error);
+
+    [Export ("testKotlinTimeInstantNullableInstant:error:"), NullAllowed]
+    Voize.SharedKotlinInstant TestKotlinTimeInstantNullable([NullAllowed] Voize.SharedKotlinInstant instant, out NSError error);
+
+    [Export ("nowFromClockClock:")]
+    Voize.SharedKotlinInstant NowFromClock([ForcedType] Voize.SharedKotlinClock clock);
+
+    [Export ("systemClock")]
+    [return: ForcedType]
+    Voize.SharedKotlinClock SystemClock();
+
+    [Export ("clockSystemNow")]
+    Voize.SharedKotlinInstant ClockSystemNow();
+
+    [Export ("echoInstantDataData:")]
+    Voize.SharedInstantData EchoInstantData(Voize.SharedInstantData data);
 
     [Export ("string")]
     string String { get; }
@@ -191,22 +245,22 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedClassWithConstructor : ObjCRuntime.INativeObject
   {
-      [Export ("initWithString:int:long:float:double:boolean:byte:char:short:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor (string @string, int @int, long @long, float @float, double @double, bool boolean, byte @byte, char @char, short @short);
+      [Export ("initWithString:int:long:float:double:boolean:byte:char:short:error:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (string @string, int @int, long @long, float @float, double @double, bool boolean, byte @byte, char @char, short @short, out NSError error);
 
-    [Export ("testDefaultTypes")]
-    string TestDefaultTypes();
+    [Export ("testDefaultTypesAndReturnError:")]
+    string TestDefaultTypes(out NSError error);
 
 
   }
   [BaseType (typeof(Voize.SharedBase))]
   interface SharedGenericClass : ObjCRuntime.INativeObject
   {
-      [Export ("processOther:"), NullAllowed]
-    string Process([NullAllowed] string other);
+      [Export ("processOther:error:"), NullAllowed]
+    string Process([NullAllowed] string other, out NSError error);
 
 
   }
@@ -215,11 +269,11 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   {
   
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedInteropTest : ObjCRuntime.INativeObject
   {
-      [Static, Export ("new"), DesignatedInitializer]
-    SharedInteropTest New ();
+      [Export ("initAndReturnError:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (out NSError error);
 
     [Export ("suspendString")]
     Voize.SharedTask SuspendString();
@@ -248,37 +302,81 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     [Export ("fastEvents")]
     Voize.SharedObservableFlow FastEvents();
 
-    [Export ("withCallbackOnResult:")]
-    void WithCallback(System.Action<Foundation.NSString> onResult);
+    [Export ("withCallbackAndReturnError:onResult:")]
+    bool WithCallback(out NSError error, System.Action<Foundation.NSString> onResult);
 
-    [Export ("withParameterizedCallbackTimes:onEach:")]
-    void WithParameterizedCallback(int times, System.Action<Foundation.NSNumber> onEach);
+    [Export ("withParameterizedCallbackTimes:error:onEach:")]
+    bool WithParameterizedCallback(int times, out NSError error, System.Action<Foundation.NSNumber> onEach);
 
-    [Export ("throwError")]
-    void ThrowError();
+    [Export ("throwErrorAndReturnError:")]
+    bool ThrowError(out NSError error);
 
-    [Export ("nullableRoundtripValue:"), NullAllowed]
-    string NullableRoundtrip([NullAllowed] string value);
+    [Export ("throwFatalErrorAndReturnError:")]
+    bool ThrowFatalError(out NSError error);
+
+    [Export ("nullableRoundtripValue:error:"), NullAllowed]
+    string NullableRoundtrip([NullAllowed] string value, out NSError error);
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
+  interface SharedThrowingCtor : ObjCRuntime.INativeObject
+  {
+      [Export ("initAndReturnError:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (out NSError error);
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
+  interface SharedNonThrowingValue : ObjCRuntime.INativeObject
+  {
+      [Export ("initWithValue:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (string value);
+
+    [Export ("getValue")]
+    string GetValue();
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
+  interface SharedTypeAliasCallbackTest : ObjCRuntime.INativeObject
+  {
+      [Export ("initAndReturnError:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (out NSError error);
+
+    [Export ("withAliasCallbackAndReturnError:onResult:")]
+    bool WithAliasCallback(out NSError error, OnStringResult onResult);
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
+  interface SharedBlockFirstCtorTest : ObjCRuntime.INativeObject
+  {
+      [Export ("initAndReturnError:onReady:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (out NSError error, System.Action onReady);
+
+    [Export ("ping")]
+    string Ping();
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedDemoSdk : ObjCRuntime.INativeObject
   {
-      [Static, Export ("new"), DesignatedInitializer]
-    SharedDemoSdk New ();
+      [Export ("initAndReturnError:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (out NSError error);
 
     [Export ("startedState")]
     Voize.SharedObservableBooleanFlow StartedState();
 
-    [Export ("start")]
-    void Start();
+    [Export ("startAndReturnError:")]
+    bool Start(out NSError error);
 
-    [Export ("stop")]
-    void Stop();
+    [Export ("stopAndReturnError:")]
+    bool Stop(out NSError error);
 
-    [Export ("restart")]
-    void Restart();
+    [Export ("restartAndReturnError:")]
+    bool Restart(out NSError error);
 
     [Export ("doBackgroundWork")]
     Voize.SharedTask DoBackgroundWork();
@@ -286,6 +384,16 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
   }
   [BaseType (typeof(Voize.SharedBase))]
+  interface SharedCompanionTest : ObjCRuntime.INativeObject
+  {
+      [Export ("getValueAndReturnError:")]
+    string GetValue(out NSError error);
+
+    [Static, Export ("companion")]
+    SharedCompanionTestCompanion Companion { [Bind ("companion")] get; }
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:list:map:long:foo:"), DesignatedInitializer]
@@ -327,7 +435,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     SharedEnum OPTION_3 { get; }
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedTestSealedClassProperties : ObjCRuntime.INativeObject
   {
       [Export ("initWithSealed:sealedSubclassStandalone:sealedSubclassStandaloneObject:"), DesignatedInitializer]
@@ -344,7 +452,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedDateTimeTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithInstant:localDateTime:duration:map:instantOrNull:"), DesignatedInitializer]
@@ -372,7 +480,21 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   {
   
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
+  interface SharedInstantData : ObjCRuntime.INativeObject
+  {
+      [Export ("initWithLabel:timestamp:"), DesignatedInitializer]
+    ObjCRuntime.NativeHandle Constructor (string label, Voize.SharedKotlinInstant timestamp);
+
+    [Export ("label")]
+    string Label { get; }
+
+    [Export ("timestamp")]
+    Voize.SharedKotlinInstant Timestamp { get; }
+
+
+  }
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedDemoData : ObjCRuntime.INativeObject
   {
       [Export ("initWithId:label:nested:"), DesignatedInitializer]
@@ -389,7 +511,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedNonNested : ObjCRuntime.INativeObject
   {
       [Export ("initWithBar:"), DesignatedInitializer]
@@ -460,7 +582,18 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedTestSealedType))]
+  [BaseType (typeof(Voize.SharedBase))]
+  interface SharedCompanionTestCompanion : ObjCRuntime.INativeObject
+  {
+      [Export ("getInstanceAndReturnError:")]
+    Voize.SharedCompanionTest GetInstance(out NSError error);
+
+    [Export ("doInitName:error:")]
+    Voize.SharedCompanionTest Init(string name, out NSError error);
+
+
+  }
+  [BaseType (typeof(Voize.SharedTestSealedType)), DisableDefaultCtor]
   interface SharedTestSealedTypeOption1 : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:nested:"), DesignatedInitializer]
@@ -474,7 +607,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedTestSealedType))]
+  [BaseType (typeof(Voize.SharedTestSealedType)), DisableDefaultCtor]
   interface SharedTestSealedTypeOption2 : ObjCRuntime.INativeObject
   {
       [Export ("initWithNumber:nonNested:"), DesignatedInitializer]
@@ -495,7 +628,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     SharedTestSealedTypeOption3 Option3 ();
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedTestSealedTypeOption1Nested : ObjCRuntime.INativeObject
   {
       [Export ("initWithNullable:"), DesignatedInitializer]
@@ -506,7 +639,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedTestSealedTypeWithCustomDiscriminator))]
+  [BaseType (typeof(Voize.SharedTestSealedTypeWithCustomDiscriminator)), DisableDefaultCtor]
   interface SharedTestSealedTypeWithCustomDiscriminatorOption1 : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:nested:"), DesignatedInitializer]
@@ -520,7 +653,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedTestSealedTypeWithCustomDiscriminator))]
+  [BaseType (typeof(Voize.SharedTestSealedTypeWithCustomDiscriminator)), DisableDefaultCtor]
   interface SharedTestSealedTypeWithCustomDiscriminatorOption2 : ObjCRuntime.INativeObject
   {
       [Export ("initWithNumber:nonNested:"), DesignatedInitializer]
@@ -541,7 +674,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     SharedTestSealedTypeWithCustomDiscriminatorOption3 Option3 ();
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedTestSealedTypeWithCustomDiscriminatorOption1Nested : ObjCRuntime.INativeObject
   {
       [Export ("initWithNullable:"), DesignatedInitializer]
@@ -552,7 +685,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedTestNested : ObjCRuntime.INativeObject
   {
       [Export ("initWithName:age:"), DesignatedInitializer]
@@ -566,7 +699,7 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
 
   }
-  [BaseType (typeof(Voize.SharedBase))]
+  [BaseType (typeof(Voize.SharedBase)), DisableDefaultCtor]
   interface SharedDemoDataNested : ObjCRuntime.INativeObject
   {
       [Export ("initWithValue:"), DesignatedInitializer]

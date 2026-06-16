@@ -2,6 +2,7 @@ package com.mauikmpexample.kotlin.shared.binding
 
 import com.mauikmpexample.kotlin.shared.SharedCoroutineScope
 import de.voize.mauikmp.annotation.MauiBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +47,11 @@ class ObservableFlow<T>(private val flow: Flow<T>) {
             flow.flowOn(Dispatchers.Default)
                 .catch { throwable ->
                     if (throwable is Error) throw throwable
+                    // `catch` is transparent to the flow's own structural cancellation, but it DOES
+                    // deliver a CancellationException that the upstream flow throws as a plain
+                    // exception. Rethrow it so cancellation is never reported to onError/the sink
+                    // Proven by ObservableFlowCancellationTest.
+                    if (throwable is CancellationException) throw throwable
                     onError(throwable)
                 }
                 .onCompletion { onCompleted() }

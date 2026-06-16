@@ -98,7 +98,31 @@ ksp {
     // frameworkName.replaceFirstChar { it.uppercaseChar() } — i.e. "shared" → "Shared".
     arg("maui.kmp.csharp.ios.namespace", "Voize")
     arg("maui.kmp.csharp.ios.frameworkPrefix", frameworkName.replaceFirstChar { it.uppercaseChar() })
-    
+
+    // Sync error contract: every synchronous @MauiBinding function/constructor must be
+    // annotated @Throws(Exception::class) so thrown exceptions reach the C# host as a catchable
+    // NSError instead of terminating the process. The async adapter types below are exempt (they
+    // marshal errors via callbacks), both as classes and as function return types.
+    arg(
+        "maui.kmp.ios.asyncAdapterTypes",
+        listOf(
+            "com.mauikmpexample.kotlin.shared.binding.Task",
+            "com.mauikmpexample.kotlin.shared.binding.CompletableTask",
+            "com.mauikmpexample.kotlin.shared.binding.ObservableFlow",
+            "com.mauikmpexample.kotlin.shared.binding.ObservableBooleanFlow",
+        ).joinToString(","),
+    )
+    // Opt out globally with: arg("maui.kmp.ios.requireThrowsOnSyncBindings", "false")
+
+    // Emit deprecated `new SharedX(...)` shims for @Throws constructors so existing call sites keep
+    // compiling during a migration (with an [Obsolete] warning). Off by default → `new SharedX()` is
+    // a hard compile error instead. Enabled here to exercise the shim path in the example.
+    arg("maui.kmp.ios.emitDeprecatedConstructorShims", "true")
+
+    // Name of the generated static wrapper/factory class. Defaults to "MauiKmpThrowsWrappers";
+    // overridden here to exercise the rename option.
+    arg("maui.kmp.ios.throwsWrapperClassName", "VoizeSdk")
+
     // To use custom values, uncomment and modify:
     // arg("maui.kmp.csharp.ios.namespace", "MyCompany.Mobile")
     // arg("maui.kmp.csharp.ios.frameworkPrefix", "Native")
