@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.4.0
 
 - Updated to Kotlin 2.3.20 and KSP 2.3.6
 - Sync error propagation: a `@Throws(Exception::class)` `@MauiBinding` function/constructor
