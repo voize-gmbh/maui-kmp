@@ -44,6 +44,7 @@ framework:
 # next restore picks up the fresh .nupkg.
 # Pack the iOS binding as a NuGet package into binding/bin/Release/ (always from a clean slate).
 pack: clean bindings framework
+    mkdir -p {{binding_dir}}/bin/Release
     cd {{kotlin_dir}} && ./gradlew :composeApp:packIosBinding
     rm -rf ~/.nuget/packages/mauikmpexample.ios
 
