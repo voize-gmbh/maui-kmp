@@ -1,6 +1,12 @@
 # CHANGELOG
 
 ## unreleased
+
+## v0.4.1
+
+- Fixed double binding on kotlin.time
+- Fixed binding error parameter order on observable
+
 ## v0.4.0
 
 - Updated to Kotlin 2.3.20 and KSP 2.3.6

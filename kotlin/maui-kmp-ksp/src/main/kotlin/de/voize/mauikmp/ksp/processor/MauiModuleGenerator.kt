@@ -73,6 +73,14 @@ class MauiModuleGenerator(
 
     private var invoked = false
 
+    // Whether kotlinx.datetime.Instant is a real, distinct class on the classpath.
+    // Since kotlinx-datetime 0.7.0 it is a deprecated `typealias Instant = kotlin.time.Instant`, which
+    // K/N expands to the same ObjC class (SharedKotlinInstant) — so no separate SharedKotlinx_datetimeInstant
+    // class exists in the binary. On older versions it is its own class with its own ObjC class. Detected
+    // from the symbol model (in process()) so binding generation adapts to whichever version is present
+    // instead of hardcoding an assumption about either case.
+    private var kotlinxDatetimeInstantIsRealClass = false
+
     private fun String.iOSModuleClassName() = this + "IOS"
 
     private fun String.androidModuleClassName() = this + "Android"
@@ -108,6 +116,17 @@ class MauiModuleGenerator(
                 mauiBindingIgnoreAnnotationType,
                 anyDeclaration,
             )
+
+        // Detect whether kotlinx.datetime.Instant is its own class (kotlinx-datetime < 0.7.0)
+        // or a deprecated typealias of kotlin.time.Instant (>= 0.7.0). Comparing the resolved declaration's
+        // qualified name is robust to both KSP behaviours: when it is a typealias, getClassDeclarationByName
+        // either returns null or resolves through to kotlin.time.Instant — neither matches the target name,
+        // so we treat it as "not a distinct class" and collapse it onto SharedKotlinInstant.
+        kotlinxDatetimeInstantIsRealClass =
+            resolver
+                .getClassDeclarationByName("kotlinx.datetime.Instant")
+                ?.qualifiedName
+                ?.asString() == "kotlinx.datetime.Instant"
 
         val functionSymbols = mutableListOf<KSFunctionDeclaration>()
         val classSymbols = mutableListOf<KSClassDeclaration>()
@@ -493,50 +512,57 @@ class MauiModuleGenerator(
                     """.trimIndent(),
             ),
         )
-        val kotlinInstantClassName = "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
-        val kotlinInstantCompanionClassName = "${kotlinInstantClassName}Companion"
+        // Only emit a separate SharedKotlinx_datetimeInstant binding when kotlinx.datetime.Instant
+        // is actually its own class (kotlinx-datetime < 0.7.0). On >= 0.7.0 it is a deprecated typealias of
+        // kotlin.time.Instant — K/N expands it to the same ObjC class, so a separate interface would be dead
+        // code with no class in the binary (link failure / runtime crash). The type renderer mirrors this
+        // decision (see getCSharpObjectCTypeName) so references resolve to the right binding either way.
+        if (kotlinxDatetimeInstantIsRealClass) {
+            val kotlinInstantClassName = "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
+            val kotlinInstantCompanionClassName = "${kotlinInstantClassName}Companion"
+            addDeclaration(
+                InterfaceDeclarationSpec(
+                    attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
+                    identifier = kotlinInstantClassName,
+                    interfaceTypeList = listOf(KotlinAnyClassName),
+                    rawBody =
+                        """
+                        [Export ("toEpochMilliseconds")]
+                        long ToEpochMilliseconds ();
 
-        addDeclaration(
-            InterfaceDeclarationSpec(
-                attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
-                identifier = kotlinInstantClassName,
-                interfaceTypeList = listOf(KotlinAnyClassName),
-                rawBody =
-                    """
-                    [Export ("toEpochMilliseconds")]
-                    long ToEpochMilliseconds ();
+                        [Static]
+                        [Export ("companion")]
+                        $kotlinInstantCompanionClassName Companion { [Bind ("companion")] get; }
+                        """.trimIndent(),
+                ),
+            )
+            addDeclaration(
+                InterfaceDeclarationSpec(
+                    attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
+                    identifier = kotlinInstantCompanionClassName,
+                    interfaceTypeList = emptyList(),
+                    rawBody =
+                        """
+                        [Export ("fromEpochMillisecondsEpochMilliseconds:")]
+                        $kotlinInstantClassName FromEpochMilliseconds (long epochMilliseconds);
 
-                    [Static]
-                    [Export ("companion")]
-                    $kotlinInstantCompanionClassName Companion { [Bind ("companion")] get; }
-                    """.trimIndent(),
-            ),
-        )
-        addDeclaration(
-            InterfaceDeclarationSpec(
-                attributes = listOf("BaseType (typeof($kotlinBaseClassName))"),
-                identifier = kotlinInstantCompanionClassName,
-                interfaceTypeList = emptyList(),
-                rawBody =
-                    """
-                    [Export ("fromEpochMillisecondsEpochMilliseconds:")]
-                    $kotlinInstantClassName FromEpochMilliseconds (long epochMilliseconds);
+                        [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment:")]
+                        $kotlinInstantClassName FromEpochSeconds (long epochSeconds, int nanosecondAdjustment);
 
-                    [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment:")]
-                    $kotlinInstantClassName FromEpochSeconds (long epochSeconds, int nanosecondAdjustment);
+                        [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment_:")]
+                        $kotlinInstantClassName FromEpochSeconds (long epochSeconds, long nanosecondAdjustment);
 
-                    [Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment_:")]
-                    $kotlinInstantClassName FromEpochSeconds (long epochSeconds, long nanosecondAdjustment);
+                        [Export ("DISTANT_FUTURE")]
+                        $kotlinInstantClassName DISTANT_FUTURE { get; }
 
-                    [Export ("DISTANT_FUTURE")]
-                    $kotlinInstantClassName DISTANT_FUTURE { get; }
+                        [Export ("DISTANT_PAST")]
+                        $kotlinInstantClassName DISTANT_PAST { get; }
+                        """.trimIndent(),
+                ),
+            )
+        }
 
-                    [Export ("DISTANT_PAST")]
-                    $kotlinInstantClassName DISTANT_PAST { get; }
-                    """.trimIndent(),
-            ),
-        )
-        // kotlin.time.Instant (stdlib, distinct from kotlinx.datetime.Instant)
+        // kotlin.time.Instant (stdlib; also the expansion target of the deprecated kotlinx.datetime.Instant alias)
         val kotlinTimeInstantClassName = "${csharpIOSBindingPrefix}KotlinInstant"
         val kotlinTimeInstantCompanionClassName = "${kotlinTimeInstantClassName}Companion"
         addDeclaration(
@@ -986,31 +1012,30 @@ class MauiModuleGenerator(
                                     val returnType = declaration.returnType!!.resolve()
                                     val returnTypeName =
                                         returnType.getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
+                                    // A top-level @Throws function is exported by K/N with an NSError
+                                    // out-param (and Unit-returning ones become BOOL) exactly like a
+                                    // class member. The previous implementation skipped this entirely,
+                                    // so the generated selector lacked the `error:` segment present in
+                                    // the binary -> unrecognized-selector crash on first call. Mirror
+                                    // the class-member throwing path (see functions.forEach above).
+                                    val throwing = declaration.hasThrowsAnnotation()
+                                    val isUnit = returnType.declaration.qualifiedName?.asString() == "kotlin.Unit"
+                                    val exportName =
+                                        if (throwing) {
+                                            getThrowingObjectCExportName(declaration)
+                                        } else {
+                                            getObjectCExportName(declaration)
+                                        }
                                     val attributes =
-                                        listOf("Static", "Export (\"${getObjectCExportName(declaration)}\")") +
-                                            returnTypeName.attributes
+                                        listOf("Static", "Export (\"$exportName\")") +
+                                            if (throwing && isUnit) emptyList() else returnTypeName.attributes
                                     append("    ${attributes.cSharpAttributesToString()}\n")
                                     append("    ")
-                                    returnTypeName.writeTo(this)
+                                    if (throwing && isUnit) append("bool") else returnTypeName.writeTo(this)
                                     append(" ")
                                     append(declaration.getCSharpObjectCName())
                                     append("(")
-                                    declaration.parameters.joinTo(
-                                        this,
-                                        separator = ", ",
-                                    ) {
-                                        buildString {
-                                            val type = it.type.resolve()
-                                            val typeName =
-                                                type
-                                                    .getCSharpObjectCTypeName(isBindingParameterOrReturnType = true)
-                                            typeName.writeAttributesTo(this)
-                                            typeName.writeTo(this)
-
-                                            append(" ")
-                                            append(it.name!!.toCSharpMemberName())
-                                        }
-                                    }
+                                    append(renderBindingParameterList(declaration, throwing))
                                     append(");\n")
                                     append("\n")
                                 }
@@ -1141,17 +1166,28 @@ class MauiModuleGenerator(
 
     /**
      * The position of the `NSError` out-parameter in a `@Throws`-annotated function/constructor.
-     * Kotlin/Native inserts it immediately before the first function-type (block/closure) parameter
-     * — mirroring ObjC's trailing-closure convention — or appends it at the end when there is none.
+     * Kotlin/Native inserts it immediately before the *trailing run* of function-type (block/closure)
+     * parameters — the contiguous block parameters at the END of the list, which ObjC renders as
+     * trailing closures — or appends it at the end when the last parameter is not a block.
+     *
+     * This is subtle: a block parameter that is followed by a non-block parameter is NOT a trailing
+     * closure, so the error is appended at the end instead of before it. Compare:
+     *   registerCallbacks(onSuccess: block, onError: block)      -> registerCallbacksAndReturnError:onSuccess:onError:
+     *   subscribe(onNext: block, …, dispatcher: NON-block)       -> subscribeOnNext:…:dispatcher:error:
+     * Both have a block at index 0, but only the first is all-trailing-blocks. Using "first block
+     * anywhere" (the previous implementation) put the error before `onNext` in subscribe and produced
+     * a selector that does not exist in the binary -> unrecognized-selector crash.
+     *
      * Type aliases are expanded so `typealias OnResult = (String)->Unit` is treated as a block.
      */
     private fun errorParameterIndex(function: KSFunctionDeclaration): Int {
-        val index =
-            function.parameters.indexOfFirst {
-                val type = it.type.resolve().expandTypeAliases()
-                type.isFunctionType || type.isSuspendFunctionType
-            }
-        return if (index >= 0) index else function.parameters.size
+        val params = function.parameters
+        var index = params.size
+        while (index > 0) {
+            val type = params[index - 1].type.resolve().expandTypeAliases()
+            if (type.isFunctionType || type.isSuspendFunctionType) index-- else break
+        }
+        return index
     }
 
     /**
@@ -1363,8 +1399,19 @@ class MauiModuleGenerator(
                     "kotlinx.datetime.LocalDateTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDateTime"
                     "kotlinx.datetime.LocalDate" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDate"
                     "kotlinx.datetime.LocalTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalTime"
-                    "kotlinx.datetime.Instant" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
+                    // Map kotlinx.datetime.Instant to its own binding only when it is a real
+                    // distinct class (kotlinx-datetime < 0.7.0). Since 0.7.0 it is a deprecated typealias
+                    // of kotlin.time.Instant that K/N expands to the same ObjC class, so it collapses onto
+                    // SharedKotlinInstant (no SharedKotlinx_datetimeInstant exists in the binary). Mirrors
+                    // the stub-emission decision in generateKotlinDefaultTypes.
+                    "kotlinx.datetime.Instant" ->
+                        if (kotlinxDatetimeInstantIsRealClass) {
+                            "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
+                        } else {
+                            "${csharpIOSBindingPrefix}KotlinInstant"
+                        }
                     "kotlin.time.Instant" -> "${csharpIOSBindingPrefix}KotlinInstant"
+                    "kotlin.time.Clock" -> "${csharpIOSBindingPrefix}KotlinClock"
                     else -> null
                 }?.let {
                     CSharp.ClassName(
@@ -1372,13 +1419,6 @@ class MauiModuleGenerator(
                         namespace = csharpIOSBindingNamespace,
                         isNullable = type.isMarkedNullable,
                     )
-                } ?: when (type.declaration.qualifiedName?.asString()) {
-                    "kotlin.time.Clock" -> CSharp.ClassName(
-                        simpleName = "${csharpIOSBindingPrefix}KotlinClock",
-                        namespace = csharpIOSBindingNamespace,
-                        isNullable = type.isMarkedNullable,
-                    )
-                    else -> null
                 } ?: when {
                     type.declaration.packageName
                         .asString()

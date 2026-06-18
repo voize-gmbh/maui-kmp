@@ -525,8 +525,8 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   [BaseType (typeof(SharedBase))]
   interface SharedTestTopLevel_fooKt
   {
-      [Static, Export ("fooString:")]
-    string Foo(string @string);
+      [Static, Export ("fooString:error:")]
+    string Foo(string @string, out NSError error);
 
 
   }
