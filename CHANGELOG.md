@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## unreleased
+## v0.4.2
 
 - Emit the standalone `SharedKotlinx_datetimeInstant` binding only when `kotlinx.datetime.Instant` is a
   distinct class **and** is actually reachable from the processed `@MauiBinding` surface — mirroring
