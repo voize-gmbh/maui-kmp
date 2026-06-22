@@ -21,15 +21,30 @@ internal object MauiNamespaceTree {
         val declarations: List<KSDeclaration>,
     )
 
+    internal data class BuildResult(
+        val rootNamespace: NamespaceNode,
+        val originatingFiles: List<KSFile>,
+        // Qualified names of EVERY type reachable from the @MauiBinding surface (the full BFS result,
+        // before filtering out library/default types). This mirrors what Kotlin/Native exports to ObjC:
+        // a hardcoded well-known stub must only be emitted when its type is actually reachable here,
+        // otherwise it becomes an orphan binding with no class in the framework and breaks linking.
+        val reachableQualifiedNames: Set<String>,
+    )
+
     internal fun build(
         declarations: List<KSDeclaration>,
         wellKnownTypes: MauiModuleGenerator.WellKnownTypes,
-    ): Pair<NamespaceNode, List<KSFile>> {
-        val customDeclarations = filterTypesForGeneration(findAllUsedTypes(declarations, wellKnownTypes))
+    ): BuildResult {
+        val allUsedTypes = findAllUsedTypes(declarations, wellKnownTypes)
+        val customDeclarations = filterTypesForGeneration(allUsedTypes)
 
         val rootNamespace = buildNamespaceTree("", customDeclarations)
         val declarationsOriginatingFiles = customDeclarations.mapNotNull { it.containingFile }
-        return rootNamespace to declarationsOriginatingFiles
+        return BuildResult(
+            rootNamespace = rootNamespace,
+            originatingFiles = declarationsOriginatingFiles,
+            reachableQualifiedNames = allUsedTypes.mapNotNull { it.qualifiedName?.asString() }.toSet(),
+        )
     }
 
     // Breath-first search to find all used types(property types, sealed types, function parameters, function return types etc), given initial types
@@ -122,7 +137,7 @@ internal object MauiNamespaceTree {
         return processed
     }
 
-    private fun filterTypesForGeneration(types: Set<KSDeclaration>): Collection<KSDeclaration> {
+    internal fun filterTypesForGeneration(types: Set<KSDeclaration>): Collection<KSDeclaration> {
         val defaultTypes =
             setOf(
                 "kotlin.Any",
@@ -151,6 +166,19 @@ internal object MauiNamespaceTree {
             when (declaration) {
                 is KSClassDeclaration -> declaration.origin == Origin.KOTLIN
                 is KSTypeParameter -> false
+                // Keep only typealiases declared in the user's own source (Origin.KOTLIN): those are
+                // emitted as a local C# `using <Alias> = <Binding>;` directive (see the KSTypeAlias
+                // branch in generateDeclaration) and referenced by that alias name in signatures.
+                // Drop library typealiases (Origin.KOTLIN_LIB) such as the deprecated
+                // `kotlinx.datetime.Instant = kotlin.time.Instant`: their underlying type is already
+                // collected by the BFS and resolved by getCSharpObjectCTypeName (which special-cases
+                // kotlinx.datetime.Instant -> SharedKotlinInstant), so a `using` directive for the alias
+                // would be dead and misleading — it aliases an unrelated binding name that nothing
+                // references (e.g. `using Instant = Voize.SharedKotlinInstant;`). NOTE: the orphan
+                // SharedKotlinx_datetimeInstant interface / link failure is prevented separately by the
+                // `emitKotlinxDatetimeInstantBinding` reachability guard in generateKotlinDefaultTypes;
+                // this only removes the stray alias directive.
+                is KSTypeAlias -> declaration.origin == Origin.KOTLIN
                 is KSFunctionDeclaration -> declaration.parentDeclaration == null // only keep top-level functions
                 is KSPropertyDeclaration -> declaration.parentDeclaration == null // only keep top-level properties
                 else -> true

@@ -2,6 +2,17 @@
 
 ## unreleased
 
+- Emit the standalone `SharedKotlinx_datetimeInstant` binding only when `kotlinx.datetime.Instant` is a
+  distinct class **and** is actually reachable from the processed `@MauiBinding` surface — mirroring
+  Kotlin/Native, which exports ObjC classes by reachability, not classpath presence. Fixes a link failure for
+  consumers on the `kotlinx-datetime:…-0.6.x-compat` artifact who migrated their API to `kotlin.time.Instant`:
+  `kotlinx.datetime.Instant` stays on the classpath but is unused, so K/N never exports it, yet the binding was
+  still emitted — an orphan whose missing `_OBJC_CLASS_$_SharedKotlinx_datetimeInstant` broke linking (SDK-113).
+- Skip library `typealias` declarations (e.g. the deprecated `kotlinx.datetime.Instant = kotlin.time.Instant`
+  on plain `0.7.x`) when generating `ApiDefinitions.cs`, so they no longer emit a dead
+  `using <Alias> = …;` directive. User-source typealiases keep their `using` alias.
+- Fail the build (instead of emitting uncompilable C#) when a non-special-cased library `typealias` is exposed.
+
 ## v0.4.1
 
 - Fixed double binding on kotlin.time

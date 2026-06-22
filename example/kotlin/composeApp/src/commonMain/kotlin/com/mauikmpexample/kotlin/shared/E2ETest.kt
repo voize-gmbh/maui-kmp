@@ -5,7 +5,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -204,6 +204,26 @@ class E2ETest  @MauiBinding @Throws(Exception::class) constructor(private val te
     @MauiBinding(canThrow = false)
     fun echoInstantData(data: InstantData): InstantData {
         return data
+    }
+
+    /**
+     * This module depends on the `kotlinx-datetime:…-0.6.x-compat` artifact, where
+     * `kotlinx.datetime.Instant` is a *distinct, deprecated class* (NOT a typealias of
+     * `kotlin.time.Instant`) that stays on the classpath. The `@MauiBinding` API, however, has migrated
+     * entirely to `kotlin.time.Instant` and never references `kotlinx.datetime.Instant` — exactly like a
+     * consumer mid-migration. Because Kotlin/Native exports ObjC classes by reachability, it exports only
+     * `SharedKotlinInstant`; no `SharedKotlinx_datetimeInstant` class exists in the framework.
+     *
+     * The KSP must therefore NOT emit a `SharedKotlinx_datetimeInstant` binding just because the class is
+     * on the classpath — that orphan interface would force-require a missing
+     * `_OBJC_CLASS_$_SharedKotlinx_datetimeInstant` symbol and break linking. This function deliberately
+     * uses `kotlin.time.Instant` (so its generated type is `SharedKotlinInstant`); the orphan-absence is
+     * asserted by the `verifyGeneratedMauiIosBindings` Gradle task against the generated `ApiDefinitions.cs`.
+     */
+    @MauiBinding
+    @Throws(Exception::class)
+    fun testKotlinxDatetimeInstant(instant: kotlin.time.Instant): kotlin.time.Instant {
+        return instant
     }
 }
 

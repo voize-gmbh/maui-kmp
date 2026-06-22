@@ -4,6 +4,8 @@ kotlin-coroutines = "1.8.0"
 kotlinx-serialization = "1.7.3"
 ksp = "2.3.6"
 kotlinpoet = "1.18.1"
+junit = "4.13.2"
+mockk = "1.13.13"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -25,6 +27,9 @@ typescriptpoet = { module = "de.voize:typescriptpoet", version = "1.2.6" }
 google-auto-service = { module = "com.google.auto.service:auto-service", version = "1.0.1" }
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+
+junit = { module = "junit:junit", version.ref = "junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 gradle-plugin-android = { module = "com.android.tools.build:gradle", version = "8.5.2" }
 gradle-plugin-kotlin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }

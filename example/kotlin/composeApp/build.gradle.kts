@@ -159,6 +159,47 @@ tasks.register<Copy>("copyGeneratedMauiIosFiles") {
     dependsOn("kspKotlinIosArm64")
     from("build/generated/ksp/iosArm64/iosArm64Main/resources/maui-kmp")
     into("../../maui/binding/generated")
+    finalizedBy("verifyGeneratedMauiIosBindings")
+}
+
+/**
+ * Regression guard for the `kotlinx.datetime.Instant` binding collapse.
+ *
+ * This module deliberately depends on the `kotlinx-datetime:…-0.6.x-compat` artifact (so
+ * `kotlinx.datetime.Instant` is a distinct class on the classpath) while the `@MauiBinding` API uses
+ * only `kotlin.time.Instant` — i.e. the class is present but UNREACHABLE. Kotlin/Native exports ObjC
+ * classes by reachability, so it never exports `SharedKotlinx_datetimeInstant`; emitting that binding
+ * would force-require a missing `_OBJC_CLASS_$_SharedKotlinx_datetimeInstant` symbol and break linking.
+ *
+ * Asserts on the REAL generated `ApiDefinitions.cs` (produced by the Kotlin/Native iosArm64 KSP run,
+ * the only place the C# generator runs — gated behind `platforms.isIOS()`, so a JVM
+ * `kotlin-compile-testing` unit test cannot reach it). Reverting the fix makes this task fail:
+ *  - reachability guard (`emitKotlinxDatetimeInstantBinding`) reappears as the orphan
+ *    `SharedKotlinx_datetimeInstant` binding interface.
+ *  - The library-typealias filter reappears as a dead `using Instant = …;` alias directive (plain 0.7.x).
+ */
+tasks.register("verifyGeneratedMauiIosBindings") {
+    description = "Fails if ApiDefinitions.cs reintroduces an orphan kotlinx.datetime.Instant binding (SDK-113/116)."
+    val apiDefinitions = project.file("../../maui/binding/generated/ApiDefinitions.cs")
+    doLast {
+        require(apiDefinitions.exists()) {
+            "Generated ApiDefinitions.cs not found at $apiDefinitions — run copyGeneratedMauiIosFiles first."
+        }
+        val text = apiDefinitions.readText()
+        val problems = buildList {
+            if (text.contains("SharedKotlinx_datetimeInstant")) {
+                add("found 'SharedKotlinx_datetimeInstant' — orphan kotlinx.datetime.Instant binding (reachability-guard regression)")
+            }
+            if (Regex("""using\s+Instant\s*=""").containsMatchIn(text)) {
+                add("found 'using Instant = …;' — dead kotlinx.datetime.Instant alias directive (typealias-filter regression)")
+            }
+        }
+        require(problems.isEmpty()) {
+            "ApiDefinitions.cs failed the kotlinx.datetime.Instant binding regression check:\n" +
+                problems.joinToString("\n") { "  - $it" }
+        }
+        logger.lifecycle("verifyGeneratedMauiIosBindings: ApiDefinitions.cs OK (kotlinx.datetime.Instant collapses onto SharedKotlinInstant)")
+    }
 }
 
 /**
