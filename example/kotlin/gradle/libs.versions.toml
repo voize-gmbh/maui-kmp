@@ -15,7 +15,7 @@ compose-multiplatform = "1.7.0"
 junit = "4.13.2"
 kotlin = "2.3.20"
 kotlinxCoroutines = "1.9.0"
-kotlinxSerializationJson = "1.8.0"
+kotlinxSerializationJson = "1.9.0"
 ksp = "2.3.6"
 maui-kmp = "0.1.0"
 
@@ -35,7 +35,10 @@ androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.1" }
+# `-0.6.x-compat`: keeps kotlinx.datetime.Instant as a distinct deprecated class on the classpath
+# (mirrors voize-core mid-migration). Combined with an API that uses kotlin.time.Instant, this exercises
+# the reachability guard: the unused kotlinx.datetime.Instant must NOT emit an orphan binding.
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.7.1-0.6.x-compat" }
 
 maui-kmp = { group = "de.voize", name = "maui-kmp", version.ref = "maui-kmp" }
 maui-kmp-ksp = { group = "de.voize", name = "maui-kmp-ksp", version.ref = "maui-kmp" }

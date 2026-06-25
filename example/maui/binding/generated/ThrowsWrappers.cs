@@ -109,7 +109,7 @@ namespace Voize
         /// <see cref="NSErrorException"/> if the Kotlin function threw an Exception.
         /// A <c>kotlin.Error</c> still terminates the process (never catchable).
         /// </summary>
-        public static long TestKotlinDateTime(this SharedE2ETest self, long duration, long? durationOrNull, Voize.SharedKotlinx_datetimeInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, Voize.SharedKotlinx_datetimeInstant? instantOrNull)
+        public static long TestKotlinDateTime(this SharedE2ETest self, long duration, long? durationOrNull, Voize.SharedKotlinInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, Voize.SharedKotlinInstant? instantOrNull)
         {
             var result = self.TestKotlinDateTime(duration, durationOrNull, instant, localDateTime, test, instantOrNull, out var error);
             if (error != null)
@@ -124,7 +124,7 @@ namespace Voize
         /// <see cref="NSErrorException"/> if the Kotlin function threw an Exception.
         /// A <c>kotlin.Error</c> still terminates the process (never catchable).
         /// </summary>
-        public static Foundation.NSNumber[] TestKotlinDateTimeList(this SharedE2ETest self, Foundation.NSNumber[] duration, Voize.SharedKotlinx_datetimeInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinx_datetimeInstant?[] instantOrNull)
+        public static Foundation.NSNumber[] TestKotlinDateTimeList(this SharedE2ETest self, Foundation.NSNumber[] duration, Voize.SharedKotlinInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinInstant?[] instantOrNull)
         {
             var result = self.TestKotlinDateTimeList(duration, instant, localDateTime, test, instantOrNull, out var error);
             if (error != null)
@@ -231,6 +231,21 @@ namespace Voize
         public static Voize.SharedKotlinInstant? TestKotlinTimeInstantNullable(this SharedE2ETest self, Voize.SharedKotlinInstant? instant)
         {
             var result = self.TestKotlinTimeInstantNullable(instant, out var error);
+            if (error != null)
+            {
+                throw new NSErrorException(error);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Calls <c>TestKotlinxDatetimeInstant</c> on <see cref="SharedE2ETest"/>; throws
+        /// <see cref="NSErrorException"/> if the Kotlin function threw an Exception.
+        /// A <c>kotlin.Error</c> still terminates the process (never catchable).
+        /// </summary>
+        public static Voize.SharedKotlinInstant TestKotlinxDatetimeInstant(this SharedE2ETest self, Voize.SharedKotlinInstant instant)
+        {
+            var result = self.TestKotlinxDatetimeInstant(instant, out var error);
             if (error != null)
             {
                 throw new NSErrorException(error);

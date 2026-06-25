@@ -22,6 +22,13 @@ dependencies {
     implementation(libs.kotlinpoet.metadata)
     implementation(libs.kotlinpoet.ksp)
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+}
+
+tasks.withType<Test> {
+    useJUnit()
 }
 
 kapt {

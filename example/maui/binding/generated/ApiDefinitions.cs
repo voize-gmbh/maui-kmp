@@ -64,34 +64,6 @@ SharedKotlinx_datetimeLocalDateCompanion Companion { [Bind ("companion")] get; }
 SharedKotlinx_datetimeLocalDate FromEpochDays (int epochDays);
   }
   [BaseType (typeof(SharedBase))]
-  interface SharedKotlinx_datetimeInstant : Voize.SharedBase
-  {
-  [Export ("toEpochMilliseconds")]
-long ToEpochMilliseconds ();
-
-[Static]
-[Export ("companion")]
-SharedKotlinx_datetimeInstantCompanion Companion { [Bind ("companion")] get; }
-  }
-  [BaseType (typeof(SharedBase))]
-  interface SharedKotlinx_datetimeInstantCompanion
-  {
-  [Export ("fromEpochMillisecondsEpochMilliseconds:")]
-SharedKotlinx_datetimeInstant FromEpochMilliseconds (long epochMilliseconds);
-
-[Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment:")]
-SharedKotlinx_datetimeInstant FromEpochSeconds (long epochSeconds, int nanosecondAdjustment);
-
-[Export ("fromEpochSecondsEpochSeconds:nanosecondAdjustment_:")]
-SharedKotlinx_datetimeInstant FromEpochSeconds (long epochSeconds, long nanosecondAdjustment);
-
-[Export ("DISTANT_FUTURE")]
-SharedKotlinx_datetimeInstant DISTANT_FUTURE { get; }
-
-[Export ("DISTANT_PAST")]
-SharedKotlinx_datetimeInstant DISTANT_PAST { get; }
-  }
-  [BaseType (typeof(SharedBase))]
   interface SharedKotlinInstant : Voize.SharedBase
   {
   [Export ("toEpochMilliseconds")]
@@ -198,10 +170,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     Voize.SharedTestSealedClassProperties TestSealedClassProperties(Voize.SharedTestSealedClassProperties test, out NSError error);
 
     [Export ("testKotlinDateTimeDuration:durationOrNull:instant:localDateTime:test:instantOrNull:error:")]
-    long TestKotlinDateTime(long duration, [NullAllowed] Foundation.NSNumber durationOrNull, Voize.SharedKotlinx_datetimeInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, [NullAllowed] Voize.SharedKotlinx_datetimeInstant instantOrNull, out NSError error);
+    long TestKotlinDateTime(long duration, [NullAllowed] Foundation.NSNumber durationOrNull, Voize.SharedKotlinInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, Voize.SharedDateTimeTest test, [NullAllowed] Voize.SharedKotlinInstant instantOrNull, out NSError error);
 
     [Export ("testKotlinDateTimeListDuration:instant:localDateTime:test:instantOrNull:error:")]
-    Foundation.NSNumber[] TestKotlinDateTimeList(Foundation.NSNumber[] duration, Voize.SharedKotlinx_datetimeInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinx_datetimeInstant?[] instantOrNull, out NSError error);
+    Foundation.NSNumber[] TestKotlinDateTimeList(Foundation.NSNumber[] duration, Voize.SharedKotlinInstant[] instant, Voize.SharedKotlinx_datetimeLocalDateTime[] localDateTime, Voize.SharedDateTimeTest[] test, Voize.SharedKotlinInstant?[] instantOrNull, out NSError error);
 
     [Export ("getDateTimeTestAndReturnError:")]
     Voize.SharedDateTimeTest GetDateTimeTest(out NSError error);
@@ -236,6 +208,9 @@ SharedKotlinx_datetimeLocalTime Time { get; }
 
     [Export ("echoInstantDataData:")]
     Voize.SharedInstantData EchoInstantData(Voize.SharedInstantData data);
+
+    [Export ("testKotlinxDatetimeInstantInstant:error:")]
+    Voize.SharedKotlinInstant TestKotlinxDatetimeInstant(Voize.SharedKotlinInstant instant, out NSError error);
 
     [Export ("string")]
     string String { get; }
@@ -456,10 +431,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
   interface SharedDateTimeTest : ObjCRuntime.INativeObject
   {
       [Export ("initWithInstant:localDateTime:duration:map:instantOrNull:"), DesignatedInitializer]
-    ObjCRuntime.NativeHandle Constructor (Voize.SharedKotlinx_datetimeInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, long duration, Foundation.NSDictionary<Foundation.NSString, Voize.SharedKotlinx_datetimeInstant> map, [NullAllowed] Voize.SharedKotlinx_datetimeInstant instantOrNull);
+    ObjCRuntime.NativeHandle Constructor (Voize.SharedKotlinInstant instant, Voize.SharedKotlinx_datetimeLocalDateTime localDateTime, long duration, Foundation.NSDictionary<Foundation.NSString, Voize.SharedKotlinInstant> map, [NullAllowed] Voize.SharedKotlinInstant instantOrNull);
 
     [Export ("instant")]
-    Voize.SharedKotlinx_datetimeInstant Instant { get; }
+    Voize.SharedKotlinInstant Instant { get; }
 
     [Export ("localDateTime")]
     Voize.SharedKotlinx_datetimeLocalDateTime LocalDateTime { get; }
@@ -468,10 +443,10 @@ SharedKotlinx_datetimeLocalTime Time { get; }
     long Duration { get; }
 
     [Export ("map")]
-    Foundation.NSDictionary<Foundation.NSString, Voize.SharedKotlinx_datetimeInstant> Map { get; }
+    Foundation.NSDictionary<Foundation.NSString, Voize.SharedKotlinInstant> Map { get; }
 
     [Export ("instantOrNull"), NullAllowed]
-    Voize.SharedKotlinx_datetimeInstant InstantOrNull { get; }
+    Voize.SharedKotlinInstant InstantOrNull { get; }
 
 
   }

@@ -19,6 +19,7 @@ import com.google.devtools.ksp.symbol.KSTypeArgument
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.Origin
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.BOOLEAN
@@ -73,13 +74,16 @@ class MauiModuleGenerator(
 
     private var invoked = false
 
-    // Whether kotlinx.datetime.Instant is a real, distinct class on the classpath.
-    // Since kotlinx-datetime 0.7.0 it is a deprecated `typealias Instant = kotlin.time.Instant`, which
-    // K/N expands to the same ObjC class (SharedKotlinInstant) — so no separate SharedKotlinx_datetimeInstant
-    // class exists in the binary. On older versions it is its own class with its own ObjC class. Detected
-    // from the symbol model (in process()) so binding generation adapts to whichever version is present
-    // instead of hardcoding an assumption about either case.
-    private var kotlinxDatetimeInstantIsRealClass = false
+    // Whether to emit a standalone `SharedKotlinx_datetimeInstant` binding. True only when
+    // kotlinx.datetime.Instant is a distinct class (kotlinx-datetime < 0.7.0, or the 0.7.x
+    // `-0.6.x-compat` artifact) — NOT the deprecated `typealias Instant = kotlin.time.Instant` (plain
+    // >= 0.7.0, which K/N collapses onto SharedKotlinInstant) — AND it is actually reachable from the
+    // processed @MauiBinding surface. Reachability matters because K/N exports ObjC classes by
+    // reachability, not classpath presence: a consumer that migrated to kotlin.time.Instant but still has
+    // kotlinx.datetime on the classpath (compat artifact) would otherwise get an orphan binding whose
+    // missing ObjC class breaks linking. Computed in process(); drives both the stub emission
+    // and the type-name mapping so they never disagree.
+    private var emitKotlinxDatetimeInstantBinding = false
 
     private fun String.iOSModuleClassName() = this + "IOS"
 
@@ -117,12 +121,13 @@ class MauiModuleGenerator(
                 anyDeclaration,
             )
 
-        // Detect whether kotlinx.datetime.Instant is its own class (kotlinx-datetime < 0.7.0)
-        // or a deprecated typealias of kotlin.time.Instant (>= 0.7.0). Comparing the resolved declaration's
-        // qualified name is robust to both KSP behaviours: when it is a typealias, getClassDeclarationByName
-        // either returns null or resolves through to kotlin.time.Instant — neither matches the target name,
-        // so we treat it as "not a distinct class" and collapse it onto SharedKotlinInstant.
-        kotlinxDatetimeInstantIsRealClass =
+        // Detect whether kotlinx.datetime.Instant is its own class (kotlinx-datetime < 0.7.0, or the
+        // 0.7.x `-0.6.x-compat` artifact) or a deprecated typealias of kotlin.time.Instant (plain >= 0.7.0).
+        // Comparing the resolved declaration's qualified name is robust to both KSP behaviours: when it is a
+        // typealias, getClassDeclarationByName either returns null or resolves through to kotlin.time.Instant
+        // — neither matches the target name. Whether to actually emit a separate binding also depends on
+        // reachability, folded in after the namespace tree is built (see emitKotlinxDatetimeInstantBinding).
+        val instantIsDistinctClass =
             resolver
                 .getClassDeclarationByName("kotlinx.datetime.Instant")
                 ?.qualifiedName
@@ -181,7 +186,18 @@ class MauiModuleGenerator(
 
         val (validSymbols, invalidSymbols) = (classSymbols + topLevelFunctions + topLevelProperties).partition { it.validate() }
 
-        val (rootNamespace, originatingKSFiles) = MauiNamespaceTree.build(validSymbols, wellKnownTypes)
+        val buildResult = MauiNamespaceTree.build(validSymbols, wellKnownTypes)
+        val rootNamespace = buildResult.rootNamespace
+        val originatingKSFiles = buildResult.originatingFiles
+
+        // Only emit the standalone kotlinx.datetime.Instant binding when it is a distinct class AND the
+        // processed @MauiBinding API actually references it — i.e. exactly when Kotlin/Native will export
+        // its ObjC class. With the `-0.6.x-compat` artifact the class is on the classpath but a consumer
+        // that migrated to kotlin.time.Instant never references it, so emitting it would produce an orphan
+        // SharedKotlinx_datetimeInstant whose missing _OBJC_CLASS_$ symbol breaks linking.
+        emitKotlinxDatetimeInstantBinding =
+            instantIsDistinctClass &&
+            "kotlinx.datetime.Instant" in buildResult.reachableQualifiedNames
 
         // generateKotlin(rootNamespace, mauiBindingAnnotationType)
 
@@ -512,12 +528,13 @@ class MauiModuleGenerator(
                     """.trimIndent(),
             ),
         )
-        // Only emit a separate SharedKotlinx_datetimeInstant binding when kotlinx.datetime.Instant
-        // is actually its own class (kotlinx-datetime < 0.7.0). On >= 0.7.0 it is a deprecated typealias of
-        // kotlin.time.Instant — K/N expands it to the same ObjC class, so a separate interface would be dead
-        // code with no class in the binary (link failure / runtime crash). The type renderer mirrors this
-        // decision (see getCSharpObjectCTypeName) so references resolve to the right binding either way.
-        if (kotlinxDatetimeInstantIsRealClass) {
+        // Only emit a separate SharedKotlinx_datetimeInstant binding when kotlinx.datetime.Instant is a
+        // distinct class AND reachable from the @MauiBinding surface (see emitKotlinxDatetimeInstantBinding).
+        // Otherwise a separate interface would be dead code with no class in the binary (link failure /
+        // runtime crash): either because it is the deprecated typealias of kotlin.time.Instant (plain
+        // >= 0.7.0) or because the compat-artifact class is present but unused. The type renderer mirrors
+        // this decision (see getCSharpObjectCTypeName) so references resolve to the right binding either way.
+        if (emitKotlinxDatetimeInstantBinding) {
             val kotlinInstantClassName = "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
             val kotlinInstantCompanionClassName = "${kotlinInstantClassName}Companion"
             addDeclaration(
@@ -1399,13 +1416,14 @@ class MauiModuleGenerator(
                     "kotlinx.datetime.LocalDateTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDateTime"
                     "kotlinx.datetime.LocalDate" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalDate"
                     "kotlinx.datetime.LocalTime" -> "${csharpIOSBindingPrefix}Kotlinx_datetimeLocalTime"
-                    // Map kotlinx.datetime.Instant to its own binding only when it is a real
-                    // distinct class (kotlinx-datetime < 0.7.0). Since 0.7.0 it is a deprecated typealias
-                    // of kotlin.time.Instant that K/N expands to the same ObjC class, so it collapses onto
-                    // SharedKotlinInstant (no SharedKotlinx_datetimeInstant exists in the binary). Mirrors
-                    // the stub-emission decision in generateKotlinDefaultTypes.
+                    // Map kotlinx.datetime.Instant to its own binding only when we actually emit that
+                    // binding (distinct class AND reachable — see emitKotlinxDatetimeInstantBinding).
+                    // Otherwise it collapses onto SharedKotlinInstant: either it is the deprecated typealias
+                    // of kotlin.time.Instant (plain >= 0.7.0) that K/N expands to the same ObjC class, or it
+                    // is the compat-artifact class that is on the classpath but unused. Mirrors the
+                    // stub-emission decision in generateKotlinDefaultTypes so references never dangle.
                     "kotlinx.datetime.Instant" ->
-                        if (kotlinxDatetimeInstantIsRealClass) {
+                        if (emitKotlinxDatetimeInstantBinding) {
                             "${csharpIOSBindingPrefix}Kotlinx_datetimeInstant"
                         } else {
                             "${csharpIOSBindingPrefix}KotlinInstant"
@@ -1472,6 +1490,17 @@ class MauiModuleGenerator(
                         }
                     when (val declaration = type.declaration) {
                         is KSTypeAlias -> {
+                            // Only user-source typealiases are supported: they are emitted as a local
+                            // `using <Alias> = …;` directive (so the namespace is empty) and dropped from
+                            // generation otherwise. A library typealias (Origin.KOTLIN_LIB) that is not
+                            // special-cased above by qualified name (e.g. kotlinx.datetime.Instant) would
+                            // produce a dangling local reference to an alias that is never declared. Fail
+                            // loudly here instead of emitting an uncompilable ApiDefinitions.cs.
+                            require(declaration.origin == Origin.KOTLIN) {
+                                "Unsupported library typealias '${declaration.qualifiedName?.asString()}' at " +
+                                    "${declaration.location}: special-case it in getCSharpObjectCTypeName " +
+                                    "(by qualified name) or expose its underlying type directly."
+                            }
                             CSharp.ParameterizedTypeName(
                                 rawType =
                                     CSharp.ClassName(

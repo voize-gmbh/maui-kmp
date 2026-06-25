@@ -283,6 +283,14 @@ public class MainPage : ContentPage
             Smoke($"kotlin.time.Instant nullable(null)={(nullResult is null ? "null" : "?")} (expect: null)");
             Smoke($"kotlin.time.Instant nullable(value)={nonNullResult?.ToEpochMilliseconds()} (expect: {epochMs})");
 
+            // Regression test kotlin.time: this module uses the kotlinx-datetime `-0.6.x-compat` artifact, where
+            // kotlinx.datetime.Instant is a distinct class on the classpath, but the API migrated to
+            // kotlin.time.Instant and never references it. K/N exports only SharedKotlinInstant, so the KSP
+            // must NOT emit an orphan SharedKotlinx_datetimeInstant (it would fail to link). The C# type
+            // below IS SharedKotlinInstant; the runtime roundtrip confirms the collapse end-to-end.
+            var datetimeRoundtrip = _e2e.TestKotlinxDatetimeInstant(kotlinInstant);
+            Smoke($"Instant roundtrip (kotlinx-datetime compat on classpath) epochMs={datetimeRoundtrip.ToEpochMilliseconds()} (expect: {epochMs})");
+
             // kotlin.time.Clock: both the convenience wrapper and the protocol path.
             var sysNow = _e2e.ClockSystemNow();
             Smoke($"clockSystemNow() epochMs={sysNow.ToEpochMilliseconds()} (should be > {epochMs})");
